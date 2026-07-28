@@ -3,17 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Manady.uz — Enterprise CRM System v5</title>
+    <title>Manady.uz — Enterprise CRM System v6 Pro</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS for Excel Parsing -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
@@ -46,13 +40,19 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">Manady<span class="text-emerald-400">.uz</span></h1>
-                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">ULTIMATE v5</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">PRO v6</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 hidden sm:block">B2B Restoranlar va Boshqaruv Tizimi</p>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">B2B Restoranlar Boshqaruvi va Sotuv Funneli</p>
                 </div>
             </div>
 
             <div class="flex items-center gap-2">
+                <!-- Script Templates Modal Button -->
+                <button onclick="openScriptModal()" title="Sotuv shablonlari" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-comment-dots text-emerald-400"></i>
+                    <span class="hidden md:inline">Shablonlar</span>
+                </button>
+
                 <!-- Reminder Badge Button -->
                 <button onclick="toggleDueFilter()" id="reminder-badge-btn" class="hidden px-3 py-2 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-bell animate-bounce text-amber-400"></i>
@@ -80,6 +80,20 @@
             </div>
         </div>
     </header>
+
+    <!-- Fast Add Bar (2-Second Quick Lead Creation) -->
+    <div class="bg-slate-800 border-b border-slate-700/60 py-2.5 px-4">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-2">
+            <span class="text-xs font-bold text-emerald-400 shrink-0 flex items-center gap-1.5">
+                <i class="fa-solid fa-bolt"></i> Tezkor qo'shish:
+            </span>
+            <input type="text" id="quick-name" placeholder="Restoran nomi..." class="w-full sm:w-1/3 px-3 py-1.5 bg-slate-900 text-white border border-slate-700 rounded-lg text-xs focus:outline-none focus:border-emerald-500">
+            <input type="text" id="quick-phone" placeholder="Telefon (+998...)" class="w-full sm:w-1/3 px-3 py-1.5 bg-slate-900 text-white border border-slate-700 rounded-lg text-xs focus:outline-none focus:border-emerald-500">
+            <button onclick="saveQuickLead()" class="w-full sm:w-auto px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-extrabold rounded-lg text-xs transition">
+                + Saqlash
+            </button>
+        </div>
+    </div>
 
     <!-- Main Content Container -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex-1 w-full space-y-4 sm:space-y-6">
@@ -129,7 +143,7 @@
                 <div class="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                        <input type="text" id="search-input" oninput="applyFilters()" placeholder="Nomi, telefoni (+998...), manzili yoki izoh bo'yicha qidirish..." 
+                        <input type="text" id="search-input" oninput="applyFilters()" placeholder="Qidirish... (Nomi, telefoni, manzili yoki teglar bo'yicha) [Ctrl+K]" 
                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition font-medium">
                     </div>
                     <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -140,11 +154,14 @@
                             <option value="Kelishildi">🤝 Kelishildi</option>
                             <option value="Rad etildi">❌ Rad etildi</option>
                         </select>
+                        <select id="tag-filter" onchange="applyFilters()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
+                            <option value="">Barcha Teglar</option>
+                            <option value="VIP">⭐ VIP</option>
+                            <option value="Qayta bog'lanish">🔄 Qayta bog'lanish</option>
+                            <option value="O'ylab ko'rmoqda">🤔 O'ylab ko'rmoqda</option>
+                        </select>
                         <select id="district-filter" onchange="applyFilters()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
                             <option value="">Barcha Tumanlar</option>
-                        </select>
-                        <select id="category-filter" onchange="applyFilters()" class="col-span-2 sm:col-span-1 w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
-                            <option value="">Barcha Kategoriyalar</option>
                         </select>
                         <button onclick="resetAllFilters()" title="Filtrlarni tozalash" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 transition">
                             <i class="fa-solid fa-rotate-left"></i>
@@ -159,9 +176,10 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-900 text-slate-300 text-[11px] uppercase tracking-wider font-bold">
-                                <th class="py-3.5 px-4 text-center w-10">№</th>
+                                <th class="py-3.5 px-4 text-center w-10">⭐</th>
                                 <th class="py-3.5 px-4 min-w-[180px]">Restoran Nomi</th>
                                 <th class="py-3.5 px-4 min-w-[150px]">Status</th>
+                                <th class="py-3.5 px-4">Teglar</th>
                                 <th class="py-3.5 px-4">Tuman</th>
                                 <th class="py-3.5 px-4">Eslatma Vaqti</th>
                                 <th class="py-3.5 px-4 min-w-[140px]">Telefon</th>
@@ -239,10 +257,30 @@
         </div>
     </div>
 
+    <!-- Modal 3: B2B Script Templates -->
+    <div id="script-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden p-5 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2"><i class="fa-solid fa-comment-dots text-emerald-600"></i> B2B Muloqot Shablonlari</h3>
+                <button onclick="closeModal('script-modal')" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div class="p-3 bg-slate-50 border rounded-xl space-y-1.5">
+                    <div class="flex justify-between font-bold text-slate-700"><span>1. Birinchi Taklif (Cold Pitch)</span> <button onclick="copyText('script-1')" class="text-emerald-600 hover:underline"><i class="fa-regular fa-copy"></i> Nusxalash</button></div>
+                    <p id="script-1" class="text-slate-600 font-mono text-[11px]">Assalomu alaykum! Manady.uz loyihasidan bog'lanmoqdamiz. Restoraningizdagi taomlar isrofilini kamaytirish va qo'shimcha daromad olish bo'yicha hamkorlik taklif etamiz. Qachon gaplashsak bo'ladi?</p>
+                </div>
+                <div class="p-3 bg-slate-50 border rounded-xl space-y-1.5">
+                    <div class="flex justify-between font-bold text-slate-700"><span>2. Qayta Bog'lanish (Follow-up)</span> <button onclick="copyText('script-2')" class="text-emerald-600 hover:underline"><i class="fa-regular fa-copy"></i> Nusxalash</button></div>
+                    <p id="script-2" class="text-slate-600 font-mono text-[11px]">Assalomu alaykum! Kecha taklifimiz bo'yicha gaplashgandik. Manady.uz tizimiga ulanish bo'yicha qaroringizni bilmoqchi edik?</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Application Engine Script -->
     <script>
         const EXCEL_FILE_PATH = './data/Toshkent_Restoranlar.xlsx';
-        const STORAGE_KEY = 'manady_restaurants_crm_v5';
+        const STORAGE_KEY = 'manady_restaurants_crm_v6';
         const DEFAULT_MSG = "Assalomu alaykum! Manady.uz loyihasidan bog'lanmoqdamiz. Restoraningiz bilan hamkorlik bo'yicha gaplashsak bo'ladimi?";
 
         let restaurants = [];
@@ -255,12 +293,11 @@
             requestNotificationPermission();
             setInterval(checkReminderSystem, 10000); 
             
+            // Shortcuts Engine
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') { closeModal('detail-modal'); closeModal('add-modal'); }
-            });
-
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) checkReminderSystem();
+                if (e.key === 'Escape') { closeModal('detail-modal'); closeModal('add-modal'); closeModal('script-modal'); }
+                if (e.ctrlKey && e.key === 'k') { e.preventDefault(); document.getElementById('search-input').focus(); }
+                if (e.ctrlKey && e.key === 'm') { e.preventDefault(); openAddModal(); }
             });
         });
 
@@ -300,7 +337,7 @@
                 renderApp();
 
             } catch (error) {
-                document.getElementById('loading-spinner').innerHTML = `<p class="text-rose-600 font-bold text-xs">Excel fayli yuklanmadi. Live Server xizmati yoniqligini va fayl yo'lini tekshiring.</p>`;
+                document.getElementById('loading-spinner').innerHTML = `<p class="text-rose-600 font-bold text-xs">Excel yuklanmadi. Live Server yoniqligini va fayl yo'lini tekshiring.</p>`;
             }
         }
 
@@ -322,6 +359,8 @@
 
                 restaurants.push({
                     id: Date.now() + i,
+                    pinned: false,
+                    tag: '',
                     name: row[1] || 'Nomsiz Restoran',
                     category: row[2] || 'Umumiy',
                     district: row[3] || 'Toshkent',
@@ -345,6 +384,24 @@
             if (cleaned.length === 9) return '+998' + cleaned;
             if (cleaned.length === 12 && cleaned.startsWith('998')) return '+' + cleaned;
             return phone;
+        }
+
+        function togglePin(id) {
+            const item = restaurants.find(r => r.id === id);
+            if (item) {
+                item.pinned = !item.pinned;
+                saveToLocalStorage();
+                applyFilters();
+            }
+        }
+
+        function updateTag(id, tagVal) {
+            const item = restaurants.find(r => r.id === id);
+            if (item) {
+                item.tag = tagVal;
+                saveToLocalStorage();
+                applyFilters();
+            }
         }
 
         function updateStatus(id, newStatus) {
@@ -376,7 +433,7 @@
         }
 
         function deleteLead(id) {
-            if (confirm("Ushbu restoranni ro'yxatdan o'chirmoqchimisiz?")) {
+            if (confirm("Ushbu restoranni o'chirmoqchimisiz?")) {
                 restaurants = restaurants.filter(r => r.id !== id);
                 saveToLocalStorage();
                 closeModal('detail-modal');
@@ -388,7 +445,6 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(restaurants));
         }
 
-        // ESLAТMA, AUDIO VA OVOZLI XABARNOMA ENGINE
         function checkReminderSystem() {
             const now = new Date();
             const currentIsoMin = now.toISOString().slice(0, 16);
@@ -399,10 +455,8 @@
                     const itemDate = new Date(item.followUpDate);
                     if (itemDate <= now) {
                         dueItemsCount++;
-
                         if (!notifiedIds.has(item.id) && item.followUpDate.slice(0, 16) <= currentIsoMin) {
                             speakAlert(`Eslatma! ${item.name} bilan bog'lanish vaqti bo'ldi.`);
-                            sendBrowserNotification(item);
                             notifiedIds.add(item.id);
                         }
                     }
@@ -417,26 +471,14 @@
                 dueCountSpan.innerText = dueItemsCount;
             } else {
                 badgeBtn.classList.add('hidden');
-                if (onlyDueReminders) { onlyDueReminders = false; applyFilters(); }
             }
         }
 
         function speakAlert(text) {
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'uz-UZ';
-                utterance.rate = 0.9;
+                utterance.lang = 'uz-UZ'; utterance.rate = 0.9;
                 window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        function sendBrowserNotification(item) {
-            const title = `📞 Qo'ng'iroq Vaqti Bo'ldi!`;
-            const body = `${item.name}\nTel: ${item.phone || 'Noma\'lum'}\nIzoh: ${item.notes || 'Yo\'q'}`;
-
-            if ("Notification" in window && Notification.permission === "granted") {
-                const notif = new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/3616/3616215.png' });
-                notif.onclick = () => { window.focus(); openModal(item.id); };
             }
         }
 
@@ -454,18 +496,15 @@
         function resetAllFilters() {
             document.getElementById('search-input').value = '';
             document.getElementById('status-filter').value = '';
+            document.getElementById('tag-filter').value = '';
             document.getElementById('district-filter').value = '';
-            document.getElementById('category-filter').value = '';
             onlyDueReminders = false;
             applyFilters();
         }
 
         function populateFilterDropdowns() {
             const districts = [...new Set(restaurants.map(r => r.district).filter(Boolean))].sort();
-            const categories = [...new Set(restaurants.map(r => r.category).filter(Boolean))].sort();
-
             populateSelect('district-filter', districts, 'Barcha Tumanlar');
-            populateSelect('category-filter', categories, 'Barcha Kategoriyalar');
         }
 
         function populateSelect(id, items, defaultText) {
@@ -479,20 +518,23 @@
         function applyFilters() {
             const query = document.getElementById('search-input').value.toLowerCase().replace(/[^a-z0-9]/g, '');
             const status = document.getElementById('status-filter').value;
+            const tag = document.getElementById('tag-filter').value;
             const district = document.getElementById('district-filter').value;
-            const category = document.getElementById('category-filter').value;
             const now = new Date();
 
             filteredData = restaurants.filter(item => {
-                const searchTarget = (item.name + item.address + item.phone + item.notes).toLowerCase().replace(/[^a-z0-9]/g, '');
+                const searchTarget = (item.name + item.address + item.phone + item.notes + (item.tag||'')).toLowerCase().replace(/[^a-z0-9]/g, '');
                 const matchesQuery = !query || searchTarget.includes(query);
                 const matchesStatus = !status || item.status === status;
+                const matchesTag = !tag || item.tag === tag;
                 const matchesDistrict = !district || item.district === district;
-                const matchesCategory = !category || item.category === category;
                 const matchesDue = !onlyDueReminders || (item.followUpDate && new Date(item.followUpDate) <= now);
 
-                return matchesQuery && matchesStatus && matchesDistrict && matchesCategory && matchesDue;
+                return matchesQuery && matchesStatus && matchesTag && matchesDistrict && matchesDue;
             });
+
+            // Sort by pinned first
+            filteredData.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
             renderData();
         }
@@ -516,9 +558,11 @@
 
                 // Desktop Row
                 const row = document.createElement('tr');
-                row.className = `transition border-b border-slate-100 ${isUrgent ? 'bg-amber-50/70 border-amber-200 font-semibold' : 'hover:bg-slate-50'}`;
+                row.className = `transition border-b border-slate-100 ${item.pinned ? 'bg-amber-50/40' : ''} ${isUrgent ? 'bg-rose-50/70 border-rose-200 font-semibold' : 'hover:bg-slate-50'}`;
                 row.innerHTML = `
-                    <td class="py-3.5 px-4 text-center font-bold text-slate-400">${index + 1}</td>
+                    <td class="py-3.5 px-4 text-center cursor-pointer" onclick="togglePin(${item.id})">
+                        <i class="fa-star ${item.pinned ? 'fa-solid text-amber-400' : 'fa-regular text-slate-300'}"></i>
+                    </td>
                     <td class="py-3.5 px-4">
                         <div class="font-bold text-slate-900 text-xs hover:text-emerald-600 cursor-pointer flex items-center gap-1.5" onclick="openModal(${item.id})">
                             ${isUrgent ? '<i class="fa-solid fa-bell text-rose-500 animate-bounce"></i>' : ''}
@@ -527,6 +571,7 @@
                         <div class="text-[11px] text-slate-400 font-normal truncate max-w-[180px]">${item.address}</div>
                     </td>
                     <td class="py-3.5 px-4">${renderStatusSelector(item.id, item.status)}</td>
+                    <td class="py-3.5 px-4">${renderTagSelector(item.id, item.tag)}</td>
                     <td class="py-3.5 px-4 font-semibold text-slate-600">${item.district}</td>
                     <td class="py-3.5 px-4">
                         ${item.followUpDate ? `<span class="px-2 py-1 rounded-lg text-[10px] font-bold ${isUrgent ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}">${item.followUpDate.replace('T', ' ')}</span>` : '<span class="text-slate-300">-</span>'}
@@ -536,7 +581,6 @@
                         <div class="flex items-center justify-center gap-1.5">
                             ${tgLink ? `<a href="${tgLink}" target="_blank" title="Telegram-da yozish" class="w-7 h-7 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center hover:bg-sky-500 hover:text-white transition"><i class="fa-brands fa-telegram"></i></a>` : ''}
                             ${item.instagram ? `<a href="${formatUrl(item.instagram, 'instagram')}" target="_blank" class="w-7 h-7 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-600 hover:text-white transition"><i class="fa-brands fa-instagram"></i></a>` : ''}
-                            ${item.maps ? `<a href="${item.maps}" target="_blank" class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center hover:bg-amber-600 hover:text-white transition"><i class="fa-solid fa-map-location-dot"></i></a>` : ''}
                         </div>
                     </td>
                     <td class="py-3.5 px-4 text-center">
@@ -553,30 +597,19 @@
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase">#${index + 1} • ${item.district}</span>
                             <h3 class="font-extrabold text-slate-900 text-sm cursor-pointer flex items-center gap-1.5" onclick="openModal(${item.id})">
-                                ${isUrgent ? '<i class="fa-solid fa-bell text-rose-500 animate-bounce"></i>' : ''}
+                                <i onclick="togglePin(${item.id})" class="fa-star ${item.pinned ? 'fa-solid text-amber-400' : 'fa-regular text-slate-300'}"></i>
                                 <span>${item.name}</span>
                             </h3>
                         </div>
-                        <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-semibold">${item.category}</span>
+                        ${renderTagSelector(item.id, item.tag)}
                     </div>
-
-                    ${item.followUpDate ? `
-                        <div class="p-2 rounded-xl text-[11px] font-bold ${isUrgent ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'} flex items-center gap-1.5">
-                            <i class="fa-regular fa-clock"></i> Eslatilgan vaqt: ${item.followUpDate.replace('T', ' ')}
-                        </div>
-                    ` : ''}
-
                     <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
                         <span class="text-[11px] font-bold text-slate-500">Status:</span>
                         ${renderStatusSelector(item.id, item.status)}
                     </div>
-
                     <div class="flex items-center gap-2">
                         <div class="flex-1">${renderPhoneCallButton(item.phone, true)}</div>
-                        <div class="flex gap-1.5">
-                            ${tgLink ? `<a href="${tgLink}" target="_blank" class="w-9 h-9 rounded-xl bg-sky-50 text-sky-500 flex items-center justify-center"><i class="fa-brands fa-telegram"></i></a>` : ''}
-                            <button onclick="openModal(${item.id})" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fa-solid fa-ellipsis"></i></button>
-                        </div>
+                        <button onclick="openModal(${item.id})" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fa-solid fa-ellipsis"></i></button>
                     </div>
                 `;
                 cardGrid.appendChild(card);
@@ -588,8 +621,7 @@
             const cleanPhone = phoneStr.replace(/[^0-9+]/g, '');
             return `
                 <a href="tel:${cleanPhone}" class="${fullWidth ? 'w-full justify-center' : ''} inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-xl font-bold text-xs transition border border-emerald-200/60">
-                    <i class="fa-solid fa-phone"></i>
-                    <span>${phoneStr}</span>
+                    <i class="fa-solid fa-phone"></i> <span>${phoneStr}</span>
                 </a>
             `;
         }
@@ -611,12 +643,48 @@
             `;
         }
 
+        function renderTagSelector(id, currentTag) {
+            return `
+                <select onchange="updateTag(${id}, this.value)" class="text-[10px] font-bold px-2 py-1 rounded-lg border bg-slate-50 text-slate-600 border-slate-200">
+                    <option value="">Teg yo'q</option>
+                    <option value="VIP" ${currentTag === 'VIP' ? 'selected' : ''}>⭐ VIP</option>
+                    <option value="Qayta bog'lanish" ${currentTag === 'Qayta bog\'lanish' ? 'selected' : ''}>🔄 Qayta bog'lanish</option>
+                    <option value="O'ylab ko'rmoqda" ${currentTag === 'O\'ylab ko\'rmoqda' ? 'selected' : ''}>🤔 O'ylab ko'rmoqda</option>
+                </select>
+            `;
+        }
+
+        function saveQuickLead() {
+            const name = document.getElementById('quick-name').value.trim();
+            const phone = document.getElementById('quick-phone').value.trim();
+
+            if (!name) { alert("Restoran nomini kiriting!"); return; }
+
+            const newLead = {
+                id: Date.now(),
+                pinned: false,
+                tag: '',
+                name: name,
+                district: 'Toshkent',
+                category: 'Umumiy',
+                phone: formatPhoneNumber(phone),
+                telegram: '', address: '-', instagram: '', maps: '',
+                work_hours: 'Ko\'rsatilmadi', status: 'Yangi', notes: 'Tezkor paneldan qo\'shildi', followUpDate: ''
+            };
+
+            restaurants.unshift(newLead);
+            saveToLocalStorage();
+            applyFilters();
+
+            document.getElementById('quick-name').value = '';
+            document.getElementById('quick-phone').value = '';
+        }
+
         function formatTgLink(tg, phone) {
             let target = '';
             if (tg) target = tg.replace('@', '').replace('https://t.me/', '');
             else if (phone) target = phone.replace(/[^0-9]/g, '');
             if (!target) return null;
-
             return `https://t.me/${target}?text=${encodeURIComponent(DEFAULT_MSG)}`;
         }
 
@@ -633,7 +701,6 @@
             const aloqada = restaurants.filter(r => r.status === 'Aloqada').length;
             const kelishildi = restaurants.filter(r => r.status === 'Kelishildi').length;
             const rad = restaurants.filter(r => r.status === 'Rad etildi').length;
-
             const cr = total > 0 ? ((kelishildi / total) * 100).toFixed(1) : 0;
 
             document.getElementById('stat-total').innerText = total;
@@ -644,7 +711,6 @@
             document.getElementById('stat-cr').innerText = `${cr}%`;
         }
 
-        // Modal Handlers
         function openModal(id) {
             const item = restaurants.find(r => r.id === id);
             if (!item) return;
@@ -658,33 +724,16 @@
                         <span class="font-bold text-slate-500">Status:</span>
                         ${renderStatusSelector(item.id, item.status)}
                     </div>
-
                     <div class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 space-y-1">
-                        <label class="block font-bold text-amber-800 text-[11px]"><i class="fa-regular fa-clock"></i> Qayta bog'lanish vaqti (Eslatma):</label>
+                        <label class="block font-bold text-amber-800 text-[11px]"><i class="fa-regular fa-clock"></i> Eslatma vaqti:</label>
                         <input type="datetime-local" value="${item.followUpDate || ''}" onchange="updateFollowUp(${item.id}, this.value)" class="w-full p-2 bg-white border rounded-lg text-xs font-semibold">
                     </div>
-
                     <div>
-                        <span class="text-slate-400 font-bold block text-[10px] uppercase">Muloqot tugmalari</span>
-                        <div class="mt-1 flex gap-2">
-                            ${renderPhoneCallButton(item.phone, true)}
-                        </div>
+                        <span class="text-slate-400 font-bold block text-[10px] uppercase mb-1">Izoh</span>
+                        <textarea onchange="updateNotes(${item.id}, this.value)" rows="3" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium">${item.notes || ''}</textarea>
                     </div>
-
-                    <div>
-                        <span class="text-slate-400 font-bold block text-[10px] uppercase">To'liq Manzil</span>
-                        <p class="font-semibold text-slate-800 mt-0.5">${item.address}</p>
-                    </div>
-
-                    <div>
-                        <span class="text-slate-400 font-bold block text-[10px] uppercase mb-1">Izohni tahrirlash</span>
-                        <textarea onchange="updateNotes(${item.id}, this.value)" rows="3" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium focus:ring-2 focus:ring-emerald-500/20">${item.notes || ''}</textarea>
-                    </div>
-
                     <div class="pt-2 border-t flex justify-between items-center">
-                        <button onclick="deleteLead(${item.id})" class="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-100 transition flex items-center gap-1">
-                            <i class="fa-solid fa-trash"></i> O'chirish
-                        </button>
+                        <button onclick="deleteLead(${item.id})" class="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-bold"><i class="fa-solid fa-trash"></i> O'chirish</button>
                         <button onclick="closeModal('detail-modal')" class="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-xl font-bold">Yopish</button>
                     </div>
                 </div>
@@ -692,38 +741,14 @@
             document.getElementById('detail-modal').classList.remove('hidden');
         }
 
-        function openAddModal() {
-            document.getElementById('add-modal').classList.remove('hidden');
-        }
+        function openAddModal() { document.getElementById('add-modal').classList.remove('hidden'); }
+        function openScriptModal() { document.getElementById('script-modal').classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-        }
-
-        function saveNewLead(e) {
-            e.preventDefault();
-            const newLead = {
-                id: Date.now(),
-                name: document.getElementById('new-name').value,
-                district: document.getElementById('new-district').value || 'Toshkent',
-                category: document.getElementById('new-category').value || 'Umumiy',
-                phone: formatPhoneNumber(document.getElementById('new-phone').value),
-                telegram: document.getElementById('new-telegram').value,
-                address: '-',
-                instagram: '',
-                maps: '',
-                work_hours: 'Ko\'rsatilmadi',
-                status: 'Yangi',
-                notes: document.getElementById('new-notes').value,
-                followUpDate: ''
-            };
-
-            restaurants.unshift(newLead);
-            saveToLocalStorage();
-            populateFilterDropdowns();
-            applyFilters();
-            closeModal('add-modal');
-            document.getElementById('add-lead-form').reset();
+        function copyText(elemId) {
+            const text = document.getElementById(elemId).innerText;
+            navigator.clipboard.writeText(text);
+            alert("Nusxalandi!");
         }
 
         function exportJSONBackup() {
@@ -732,8 +757,7 @@
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", `Manady_CRM_Backup_${new Date().toISOString().slice(0,10)}.json`);
             document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+            downloadAnchor.click(); downloadAnchor.remove();
         }
 
         function importJSONBackup(event) {
@@ -742,28 +766,17 @@
                 try {
                     const importedData = JSON.parse(e.target.result);
                     if (Array.isArray(importedData)) {
-                        restaurants = importedData;
-                        saveToLocalStorage();
-                        renderApp();
-                        alert("Baza muvaffaqiyatli tiklandi!");
+                        restaurants = importedData; saveToLocalStorage(); renderApp(); alert("Baza tiklandi!");
                     }
-                } catch(err) { alert("JSON fayl formati noto'g'ri!"); }
+                } catch(err) { alert("Xato fayl!"); }
             };
             if (event.target.files[0]) fileReader.readAsText(event.target.files[0]);
         }
 
         function exportToExcel() {
             const dataToExport = restaurants.map((r, idx) => ({
-                "№": idx + 1,
-                "Restoran nomi": r.name,
-                "Status": r.status,
-                "Kategoriya": r.category,
-                "Tuman": r.district,
-                "Telefon": r.phone,
-                "Eslatma sanasi": r.followUpDate || '',
-                "Izoh": r.notes
+                "№": idx + 1, "Restoran nomi": r.name, "Status": r.status, "Teg": r.tag, "Tuman": r.district, "Telefon": r.phone, "Eslatma": r.followUpDate || '', "Izoh": r.notes
             }));
-
             const worksheet = XLSX.utils.json_to_sheet(dataToExport);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Restoranlar");
