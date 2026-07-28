@@ -21,6 +21,17 @@
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .urgent-reminder {
+            animation: pulse-ring 2s infinite;
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
     </style>
 </head>
 <body class="h-full text-slate-800 antialiased flex flex-col selection:bg-emerald-500 selection:text-white pb-10">
@@ -42,6 +53,12 @@
             </div>
 
             <div class="flex items-center gap-2">
+                <!-- Reminder Badge -->
+                <button onclick="filterDueReminders()" id="reminder-badge-btn" class="hidden px-3 py-2 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-bell animate-bounce text-amber-400"></i>
+                    <span>Eslatmalar (<span id="due-count">0</span>)</span>
+                </button>
+
                 <button onclick="openAddModal()" class="px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition flex items-center gap-1.5 shadow-md shadow-blue-900/20">
                     <i class="fa-solid fa-plus"></i>
                     <span>Yangi qo'shish</span>
@@ -128,8 +145,8 @@
                                 <th class="py-3.5 px-4 min-w-[180px]">Restoran Nomi</th>
                                 <th class="py-3.5 px-4 min-w-[150px]">Status</th>
                                 <th class="py-3.5 px-4">Tuman</th>
-                                <th class="py-3.5 px-4">Kategoriya</th>
-                                <th class="py-3.5 px-4 min-w-[140px]">Telefon (1-bosish)</th>
+                                <th class="py-3.5 px-4">Eslatilgan Vaqt</th>
+                                <th class="py-3.5 px-4 min-w-[140px]">Telefon</th>
                                 <th class="py-3.5 px-4 text-center">Tezkor Muloqot</th>
                                 <th class="py-3.5 px-4 text-center w-16">Batafsil</th>
                             </tr>
@@ -204,7 +221,7 @@
         </div>
     </div>
 
-    <!-- Application Script Logic -->
+    <!-- Application Logic Script -->
     <script>
         const EXCEL_FILE_PATH = './data/Toshkent_Restoranlar.xlsx';
         const STORAGE_KEY = 'manady_restaurants_crm_v3';
@@ -212,8 +229,19 @@
 
         let restaurants = [];
         let filteredData = [];
+        let notifiedIds = new Set(); // Qayta bildirishnoma chiqmasligi uchun
 
-        document.addEventListener("DOMContentLoaded", () => { initApp(); });
+        document.addEventListener("DOMContentLoaded", () => { 
+            initApp();
+            requestNotificationPermission();
+            setInterval(checkReminderSystem, 15000); // Har 15 sekunda vaqtni tekshiradi
+        });
+
+        function requestNotificationPermission() {
+            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
 
         async function initApp() {
             const savedData = localStorage.getItem(STORAGE_KEY);
@@ -253,14 +281,13 @@
             filteredData = [...restaurants];
             populateFilterDropdowns();
             applyFilters();
+            checkReminderSystem();
             document.getElementById('loading-spinner').classList.add('hidden');
             document.getElementById('main-content').classList.remove('hidden');
         }
 
         function parseAndSetData(json) {
             if (json.length < 2) return;
-            const headers = json[0].map(h => String(h || '').trim().toLowerCase());
-            
             restaurants = [];
             for (let i = 1; i < json.length; i++) {
                 const row = json[i];
@@ -298,12 +325,66 @@
             const item = restaurants.find(r => r.id === id);
             if (item) {
                 item.followUpDate = dateVal;
+                notifiedIds.delete(id); // Qayta vaqt biriktirilsa, eski bildirishnomani tozalaymiz
                 saveToLocalStorage();
+                applyFilters();
             }
         }
 
         function saveToLocalStorage() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(restaurants));
+        }
+
+        // ESLAТMA VA NOTIFICATION TIZIMI (REAL-TIME)
+        function checkReminderSystem() {
+            const now = new Date();
+            const currentIsoMin = now.toISOString().slice(0, 16);
+            let dueItemsCount = 0;
+
+            restaurants.forEach(item => {
+                if (item.followUpDate) {
+                    const itemDate = new Date(item.followUpDate);
+                    // Vaqti yetgan yoki o'tib ketgan eslatmalar
+                    if (itemDate <= now) {
+                        dueItemsCount++;
+
+                        // Dastlabki marta vaqti kelganda Notification chiqaradi
+                        if (!notifiedIds.has(item.id) && item.followUpDate.slice(0, 16) <= currentIsoMin) {
+                            sendBrowserNotification(item);
+                            notifiedIds.add(item.id);
+                        }
+                    }
+                }
+            });
+
+            // Headerdagi eslatma belgisini yangilash
+            const badgeBtn = document.getElementById('reminder-badge-btn');
+            const dueCountSpan = document.getElementById('due-count');
+            
+            if (dueItemsCount > 0) {
+                badgeBtn.classList.remove('hidden');
+                dueCountSpan.innerText = dueItemsCount;
+            } else {
+                badgeBtn.classList.add('hidden');
+            }
+        }
+
+        function sendBrowserNotification(item) {
+            const title = `📞 Qo'ng'iroq Vaqti Bo'ldi!`;
+            const body = `${item.name}\nTel: ${item.phone || 'Biriktirilmagan'}\nIzoh: ${item.notes || 'Yo\'q'}`;
+
+            if ("Notification" in window && Notification.permission === "granted") {
+                const notif = new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/3616/3616215.png' });
+                notif.onclick = () => { window.focus(); openModal(item.id); };
+            } else {
+                alert(`🔔 ESLATMA!\n\n${body}`);
+            }
+        }
+
+        function filterDueReminders() {
+            const now = new Date();
+            filteredData = restaurants.filter(r => r.followUpDate && new Date(r.followUpDate) <= now);
+            renderData();
         }
 
         function populateFilterDropdowns() {
@@ -344,6 +425,7 @@
             const tbody = document.getElementById('restaurant-table-body');
             const cardGrid = document.getElementById('restaurant-card-grid');
             const emptyState = document.getElementById('empty-state');
+            const now = new Date();
 
             tbody.innerHTML = ''; cardGrid.innerHTML = '';
 
@@ -352,25 +434,30 @@
             } else { emptyState.classList.add('hidden'); }
 
             filteredData.forEach((item, index) => {
-                // Telegram template link generator
                 const tgLink = formatTgLink(item.telegram, item.phone);
+                const isUrgent = item.followUpDate && new Date(item.followUpDate) <= now;
 
-                // Desktop
+                // Desktop Row
                 const row = document.createElement('tr');
-                row.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                row.className = `transition border-b border-slate-100 ${isUrgent ? 'bg-amber-50/70 border-amber-200 font-semibold' : 'hover:bg-slate-50'}`;
                 row.innerHTML = `
                     <td class="py-3.5 px-4 text-center font-bold text-slate-400">${index + 1}</td>
                     <td class="py-3.5 px-4">
-                        <div class="font-bold text-slate-900 text-xs hover:text-emerald-600 cursor-pointer" onclick="openModal(${item.id})">${item.name}</div>
+                        <div class="font-bold text-slate-900 text-xs hover:text-emerald-600 cursor-pointer flex items-center gap-1.5" onclick="openModal(${item.id})">
+                            ${isUrgent ? '<i class="fa-solid fa-bell text-rose-500 animate-bounce"></i>' : ''}
+                            <span>${item.name}</span>
+                        </div>
                         <div class="text-[11px] text-slate-400 font-normal truncate max-w-[180px]">${item.address}</div>
                     </td>
                     <td class="py-3.5 px-4">${renderStatusSelector(item.id, item.status)}</td>
                     <td class="py-3.5 px-4 font-semibold text-slate-600">${item.district}</td>
-                    <td class="py-3.5 px-4"><span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[11px] font-semibold">${item.category}</span></td>
+                    <td class="py-3.5 px-4">
+                        ${item.followUpDate ? `<span class="px-2 py-1 rounded-lg text-[10px] font-bold ${isUrgent ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}">${item.followUpDate.replace('T', ' ')}</span>` : '<span class="text-slate-300">-</span>'}
+                    </td>
                     <td class="py-3.5 px-4 font-mono text-xs">${renderPhoneCallButton(item.phone)}</td>
                     <td class="py-3.5 px-4 text-center">
                         <div class="flex items-center justify-center gap-1.5">
-                            ${tgLink ? `<a href="${tgLink}" target="_blank" title="Telegram-da yozish (shablon)" class="w-7 h-7 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center hover:bg-sky-500 hover:text-white transition"><i class="fa-brands fa-telegram"></i></a>` : ''}
+                            ${tgLink ? `<a href="${tgLink}" target="_blank" title="Telegram-da yozish" class="w-7 h-7 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center hover:bg-sky-500 hover:text-white transition"><i class="fa-brands fa-telegram"></i></a>` : ''}
                             ${item.instagram ? `<a href="${formatUrl(item.instagram, 'instagram')}" target="_blank" class="w-7 h-7 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-600 hover:text-white transition"><i class="fa-brands fa-instagram"></i></a>` : ''}
                             ${item.maps ? `<a href="${item.maps}" target="_blank" class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center hover:bg-amber-600 hover:text-white transition"><i class="fa-solid fa-map-location-dot"></i></a>` : ''}
                         </div>
@@ -383,15 +470,24 @@
 
                 // Mobile Card
                 const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-3";
+                card.className = `p-4 rounded-2xl border shadow-sm space-y-3 transition ${isUrgent ? 'urgent-reminder' : 'bg-white border-slate-200/80'}`;
                 card.innerHTML = `
                     <div class="flex justify-between items-start gap-2">
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase">#${index + 1} • ${item.district}</span>
-                            <h3 class="font-extrabold text-slate-900 text-sm cursor-pointer" onclick="openModal(${item.id})">${item.name}</h3>
+                            <h3 class="font-extrabold text-slate-900 text-sm cursor-pointer flex items-center gap-1.5" onclick="openModal(${item.id})">
+                                ${isUrgent ? '<i class="fa-solid fa-bell text-rose-500 animate-bounce"></i>' : ''}
+                                <span>${item.name}</span>
+                            </h3>
                         </div>
                         <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-semibold">${item.category}</span>
                     </div>
+
+                    ${item.followUpDate ? `
+                        <div class="p-2 rounded-xl text-[11px] font-bold ${isUrgent ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'} flex items-center gap-1.5">
+                            <i class="fa-regular fa-clock"></i> Eslatilgan vaqt: ${item.followUpDate.replace('T', ' ')}
+                        </div>
+                    ` : ''}
 
                     <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
                         <span class="text-[11px] font-bold text-slate-500">Status:</span>
