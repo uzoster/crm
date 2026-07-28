@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manady.uz - Restoranlar Katalogi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Excel Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-emerald-700 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/10 p-2.5 rounded-xl border border-white/20">
+                    <i class="fa-solid fa-utensils text-2xl text-emerald-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight">Manady<span class="text-emerald-300">.uz</span></h1>
+                    <p class="text-xs text-emerald-100 font-medium">Restoran va Hamkorlar Katalogi</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="loadExcelAuto()" class="bg-emerald-800 hover:bg-emerald-900 text-emerald-100 border border-emerald-600 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Ma'lumotni Yangilash</span>
+                </button>
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Eksport</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        
+        <!-- Loading Indicator -->
+        <div id="loading-spinner" class="py-12 text-center">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-emerald-600 mb-3"></i>
+            <p class="text-sm text-slate-600 font-medium">Excel fayl o'qilmoqda (./data/Toshkent_Restoranlar.xlsx)...</p>
+        </div>
+
+        <div id="main-content" class="hidden">
+            <!-- Stats Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-slate-900" id="stat-total">0</div>
+                        <div class="text-xs text-slate-500 font-medium">Jami Restoranlar</div>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-slate-900" id="stat-districts">0</div>
+                        <div class="text-xs text-slate-500 font-medium">Qamrab Olingan Tumanlar</div>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-slate-900" id="stat-categories">0</div>
+                        <div class="text-xs text-slate-500 font-medium">Kategoriyalar</div>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-slate-900" id="stat-active">0</div>
+                        <div class="text-xs text-slate-500 font-medium">Faol Hamkorlar</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 space-y-4">
+                <div class="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-input" oninput="applyFilters()" placeholder="Restoran nomi, manzil yoki izoh bo'yicha qidirish..." 
+                               class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    </div>
+
+                    <div class="flex flex-wrap sm:flex-nowrap gap-3">
+                        <select id="district-filter" onchange="applyFilters()" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                            <option value="">Barcha Tumanlar</option>
+                        </select>
+
+                        <select id="category-filter" onchange="applyFilters()" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                            <option value="">Barcha Kategoriyalar</option>
+                        </select>
+
+                        <select id="status-filter" onchange="applyFilters()" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                            <option value="">Barcha Holatlar</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div id="table-view-container" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 text-white text-xs uppercase tracking-wider font-semibold">
+                                <th class="py-4 px-4 text-center">№</th>
+                                <th class="py-4 px-4">Restoran Nomi</th>
+                                <th class="py-4 px-4">Kategoriya</th>
+                                <th class="py-4 px-4">Tuman</th>
+                                <th class="py-4 px-4">To'liq Manzil</th>
+                                <th class="py-4 px-4">Telefon</th>
+                                <th class="py-4 px-4 text-center">Ijtimoiy Tarmoqlar</th>
+                                <th class="py-4 px-4">Ish Vaqti</th>
+                                <th class="py-4 px-4 text-center">Holati</th>
+                                <th class="py-4 px-4 text-center">Izoh</th>
+                            </tr>
+                        </thead>
+                        <tbody id="restaurant-table-body" class="divide-y divide-slate-100 text-sm font-medium">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let restaurants = [];
+        let filteredData = [];
+
+        // Dynamic Path matching your structure
+        const EXCEL_FILE_PATH = './data/Toshkent_Restoranlar.xlsx';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadExcelAuto();
+        });
+
+        // Fetch Excel File Directly from the folder
+        async function loadExcelAuto() {
+            document.getElementById('loading-spinner').classList.remove('hidden');
+            document.getElementById('main-content').classList.add('hidden');
+
+            try {
+                const response = await fetch(EXCEL_FILE_PATH);
+                if (!response.ok) {
+                    throw new Error(`Faylni topib bo'lmadi: ${response.statusText}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                parseAndSetData(json);
+
+                document.getElementById('loading-spinner').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+            } catch (error) {
+                console.error("Excel yuklashda xatolik:", error);
+                document.getElementById('loading-spinner').innerHTML = `
+                    <div class="p-6 bg-red-50 border border-red-200 text-red-700 rounded-2xl max-w-lg mx-auto">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i>
+                        <h4 class="font-bold">Faylni o'qishda xatolik!</h4>
+                        <p class="text-xs mt-1">Sabab: ${error.message}</p>
+                        <p class="text-xs mt-2 text-slate-500">Iltimos, Live Server ishga tushirilganiga va fayl manzili <b>./data/Toshkent_Restoranlar.xlsx</b> ekanligiga ishonch hosil qiling.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Parse JSON array to JS Objects
+        function parseAndSetData(json) {
+            if (json.length < 2) return;
+
+            const headers = json[0].map(h => String(h || '').trim().toLowerCase());
+            
+            const idxName = headers.findIndex(h => h.includes('restoran') || h.includes('nomi'));
+            const idxCat = headers.findIndex(h => h.includes('kategoriya'));
+            const idxDist = headers.findIndex(h => h.includes('tuman'));
+            const idxAddr = headers.findIndex(h => h.includes('manzil'));
+            const idxPhone = headers.findIndex(h => h.includes('telefon') || h.includes('tel'));
+            const idxInsta = headers.findIndex(h => h.includes('instagram'));
+            const idxTg = headers.findIndex(h => h.includes('telegram'));
+            const idxWeb = headers.findIndex(h => h.includes('website') || h.includes('sayt'));
+            const idxMaps = headers.findIndex(h => h.includes('maps') || h.includes('google'));
+            const idxHours = headers.findIndex(h => h.includes('vaqt') || h.includes('ish'));
+            const idxStatus = headers.findIndex(h => h.includes('holat') || h.includes('status'));
+            const idxNotes = headers.findIndex(h => h.includes('izoh'));
+
+            restaurants = [];
+
+            for (let i = 1; i < json.length; i++) {
+                const row = json[i];
+                if (!row || row.length === 0) continue;
+
+                restaurants.push({
+                    id: i,
+                    name: row[idxName !== -1 ? idxName : 1] || '-',
+                    category: row[idxCat !== -1 ? idxCat : 2] || 'Umumiy',
+                    district: row[idxDist !== -1 ? idxDist : 3] || 'Toshkent',
+                    address: row[idxAddr !== -1 ? idxAddr : 4] || '-',
+                    phone: row[idxPhone !== -1 ? idxPhone : 5] || '-',
+                    instagram: row[idxInsta !== -1 ? idxInsta : 6] || '',
+                    telegram: row[idxTg !== -1 ? idxTg : 7] || '',
+                    website: row[idxWeb !== -1 ? idxWeb : 8] || '',
+                    maps: row[idxMaps !== -1 ? idxMaps : 9] || '',
+                    work_hours: row[idxHours !== -1 ? idxHours : 10] || '-',
+                    status: row[idxStatus !== -1 ? idxStatus : 11] || 'Faol',
+                    notes: row[idxNotes !== -1 ? idxNotes : 12] || ''
+                });
+            }
+
+            filteredData = [...restaurants];
+            populateFilterDropdowns();
+            renderData();
+        }
+
+        function populateFilterDropdowns() {
+            const districts = [...new Set(restaurants.map(r => r.district).filter(Boolean))];
+            const categories = [...new Set(restaurants.map(r => r.category).filter(Boolean))];
+            const statuses = [...new Set(restaurants.map(r => r.status).filter(Boolean))];
+
+            populateSelect('district-filter', districts, 'Barcha Tumanlar');
+            populateSelect('category-filter', categories, 'Barcha Kategoriyalar');
+            populateSelect('status-filter', statuses, 'Barcha Holatlar');
+        }
+
+        function populateSelect(id, items, defaultText) {
+            const select = document.getElementById(id);
+            select.innerHTML = `<option value="">${defaultText}</option>`;
+            items.forEach(item => {
+                select.innerHTML += `<option value="${item}">${item}</option>`;
+            });
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const district = document.getElementById('district-filter').value;
+            const category = document.getElementById('category-filter').value;
+            const status = document.getElementById('status-filter').value;
+
+            filteredData = restaurants.filter(item => {
+                const matchesQuery = !query || 
+                    (item.name && item.name.toLowerCase().includes(query)) ||
+                    (item.address && item.address.toLowerCase().includes(query)) ||
+                    (item.notes && item.notes.toLowerCase().includes(query));
+                
+                const matchesDistrict = !district || item.district === district;
+                const matchesCategory = !category || item.category === category;
+                const matchesStatus = !status || item.status === status;
+
+                return matchesQuery && matchesDistrict && matchesCategory && matchesStatus;
+            });
+
+            renderData();
+        }
+
+        function renderData() {
+            updateStats();
+            const tbody = document.getElementById('restaurant-table-body');
+            tbody.innerHTML = '';
+
+            filteredData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                row.innerHTML = `
+                    <td class="py-3.5 px-4 text-center font-bold text-slate-400">${index + 1}</td>
+                    <td class="py-3.5 px-4 font-bold text-slate-900">${item.name}</td>
+                    <td class="py-3.5 px-4"><span class="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-semibold">${item.category}</span></td>
+                    <td class="py-3.5 px-4 text-slate-600">${item.district}</td>
+                    <td class="py-3.5 px-4 text-slate-500 text-xs max-w-xs truncate" title="${item.address}">${item.address}</td>
+                    <td class="py-3.5 px-4 text-slate-700 font-mono text-xs">${item.phone}</td>
+                    <td class="py-3.5 px-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            ${item.instagram ? `<a href="${item.instagram.startsWith('http') ? item.instagram : 'https://instagram.com/' + item.instagram.replace('@','')}" target="_blank" class="w-7 h-7 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-600 hover:text-white transition"><i class="fa-brands fa-instagram"></i></a>` : ''}
+                            ${item.telegram ? `<a href="${item.telegram.startsWith('http') ? item.telegram : 'https://t.me/' + item.telegram.replace('@','')}" target="_blank" class="w-7 h-7 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center hover:bg-sky-500 hover:text-white transition"><i class="fa-brands fa-telegram"></i></a>` : ''}
+                            ${item.website ? `<a href="${item.website}" target="_blank" class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition"><i class="fa-solid fa-globe"></i></a>` : ''}
+                            ${item.maps ? `<a href="${item.maps}" target="_blank" class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center hover:bg-amber-600 hover:text-white transition"><i class="fa-solid fa-map-pin"></i></a>` : ''}
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4 text-xs text-slate-600">${item.work_hours}</td>
+                    <td class="py-3.5 px-4 text-center">${getStatusBadge(item.status)}</td>
+                    <td class="py-3.5 px-4 text-xs text-slate-500 max-w-xs truncate" title="${item.notes}">${item.notes || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getStatusBadge(status) {
+            if (!status) return `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-xs font-semibold">-</span>`;
+            const st = status.toLowerCase();
+            if (st.includes('faol') || st.includes('ochik') || st.includes('active')) {
+                return `<span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> ${status}</span>`;
+            } else if (st.includes('muzlatilgan') || st.includes('yopiq')) {
+                return `<span class="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> ${status}</span>`;
+            } else {
+                return `<span class="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> ${status}</span>`;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total').innerText = filteredData.length;
+            const districts = new Set(filteredData.map(r => r.district).filter(Boolean));
+            document.getElementById('stat-districts').innerText = districts.size;
+            const categories = new Set(filteredData.map(r => r.category).filter(Boolean));
+            document.getElementById('stat-categories').innerText = categories.size;
+            const active = filteredData.filter(r => (r.status || '').toLowerCase().includes('faol')).length;
+            document.getElementById('stat-active').innerText = active;
+        }
+
+        function exportToExcel() {
+            const dataToExport = filteredData.map((r, index) => ({
+                "№": index + 1,
+                "Restoran nomi": r.name,
+                "Kategoriya": r.category,
+                "Tuman": r.district,
+                "To'liq manzil": r.address,
+                "Telefon": r.phone,
+                "Instagram": r.instagram,
+                "Telegram": r.telegram,
+                "Website": r.website,
+                "Google Maps": r.maps,
+                "Ish vaqti": r.work_hours,
+                "Holati (Status)": r.status,
+                "Izoh": r.notes
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Restoranlar");
+            XLSX.writeFile(workbook, "Toshkent_Restoranlar_Export.xlsx");
+        }
+    </script>
+</body>
+</html>
