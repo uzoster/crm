@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Manady.uz — Enterprise CRM System v6 Pro</title>
-    
+    <title>Manady.uz — Enterprise CRM System v8 (AI Powered)</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -15,24 +15,38 @@
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        
+
         @keyframes pulse-ring {
             0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
             70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
-        .urgent-reminder {
-            animation: pulse-ring 2s infinite;
-            border-color: #f87171 !important;
-            background-color: #fef2f2 !important;
+        .urgent-reminder { animation: pulse-ring 2s infinite; border-color: #f87171 !important; background-color: #fef2f2 !important; }
+
+        @keyframes toast-in { from { transform: translateY(12px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+        .toast { animation: toast-in .25s ease-out; }
+
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { color: #34d399; }
+
+        [data-dark="true"] body { background:#0f172a; }
+        .skeleton { background: linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 37%,#f1f5f9 63%); background-size: 400% 100%; animation: sk 1.4s ease infinite; }
+        @keyframes sk { 0%{background-position:100% 50%} 100%{background-position:0 50%} }
+
+        @media print {
+            header, .no-print, #search-input, .fixed { display:none !important; }
+            body { padding:0 !important; }
         }
     </style>
 </head>
 <body class="h-full text-slate-800 antialiased flex flex-col selection:bg-emerald-500 selection:text-white pb-10">
 
+    <!-- Toast container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[100] space-y-2 no-print"></div>
+
     <!-- Sticky Header -->
-    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center gap-3">
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center gap-3 flex-wrap">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-900/30">
                     <i class="fa-solid fa-utensils text-lg"></i>
@@ -40,26 +54,25 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">Manady<span class="text-emerald-400">.uz</span></h1>
-                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">PRO v6</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i> AI v8
+                        </span>
                     </div>
-                    <p class="text-[11px] text-slate-400 hidden sm:block">B2B Restoranlar Boshqaruvi va Sotuv Funneli</p>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Gemini AI bilan B2B Sotuv va CRM Boshqaruvi</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <!-- Script Templates Modal Button -->
-                <button onclick="openScriptModal()" title="Sotuv shablonlari" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700 flex items-center gap-1.5">
-                    <i class="fa-solid fa-comment-dots text-emerald-400"></i>
-                    <span class="hidden md:inline">Shablonlar</span>
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <button onclick="openAISettingsModal()" title="Gemini AI Sozlamalari" class="px-2.5 py-2 rounded-xl text-xs font-bold text-purple-300 bg-purple-900/40 border border-purple-700/60 hover:bg-purple-800/50 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-brain"></i>
+                    <span class="hidden md:inline">AI Config</span>
                 </button>
 
-                <!-- Reminder Badge Button -->
                 <button onclick="toggleDueFilter()" id="reminder-badge-btn" class="hidden px-3 py-2 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-bell animate-bounce text-amber-400"></i>
                     <span>Eslatmalar (<span id="due-count">0</span>)</span>
                 </button>
 
-                <!-- Data Backup / Restore -->
                 <button onclick="exportJSONBackup()" title="Bazani saqlab olish (JSON)" class="px-2.5 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
                     <i class="fa-solid fa-download"></i>
                 </button>
@@ -67,22 +80,33 @@
                     <i class="fa-solid fa-upload"></i>
                     <input type="file" accept=".json" onchange="importJSONBackup(event)" class="hidden">
                 </label>
+                <label title="Excel fayldan qo'shish" class="cursor-pointer px-2.5 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
+                    <i class="fa-solid fa-file-import"></i>
+                    <input type="file" accept=".xlsx,.xls,.csv" onchange="importExcelManual(event)" class="hidden">
+                </label>
 
                 <button onclick="openAddModal()" class="px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition flex items-center gap-1.5 shadow-md shadow-blue-900/20">
                     <i class="fa-solid fa-plus"></i>
                     <span class="hidden sm:inline">Yangi lead</span>
                 </button>
-                
-                <button onclick="exportToExcel()" class="px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition flex items-center gap-2 shadow-md shadow-emerald-900/20">
-                    <i class="fa-solid fa-file-excel"></i>
-                    <span class="hidden sm:inline">Excel</span>
-                </button>
+
+                <div class="relative">
+                    <button onclick="document.getElementById('export-menu').classList.toggle('hidden')" class="px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition flex items-center gap-2 shadow-md shadow-emerald-900/20">
+                        <i class="fa-solid fa-file-export"></i>
+                        <span class="hidden sm:inline">Eksport</span> <i class="fa-solid fa-chevron-down text-[9px]"></i>
+                    </button>
+                    <div id="export-menu" class="hidden absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden text-slate-700 z-40">
+                        <button onclick="exportToExcel(); document.getElementById('export-menu').classList.add('hidden')" class="w-full text-left px-3.5 py-2.5 text-xs font-bold hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-file-excel text-emerald-600"></i> Excel (.xlsx)</button>
+                        <button onclick="exportToCSV(); document.getElementById('export-menu').classList.add('hidden')" class="w-full text-left px-3.5 py-2.5 text-xs font-bold hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-file-csv text-blue-600"></i> CSV</button>
+                        <button onclick="window.print(); document.getElementById('export-menu').classList.add('hidden')" class="w-full text-left px-3.5 py-2.5 text-xs font-bold hover:bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-print text-slate-600"></i> Chop etish</button>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Fast Add Bar (2-Second Quick Lead Creation) -->
-    <div class="bg-slate-800 border-b border-slate-700/60 py-2.5 px-4">
+    <!-- Fast Add Bar -->
+    <div class="bg-slate-800 border-b border-slate-700/60 py-2.5 px-4 no-print">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-2">
             <span class="text-xs font-bold text-emerald-400 shrink-0 flex items-center gap-1.5">
                 <i class="fa-solid fa-bolt"></i> Tezkor qo'shish:
@@ -95,10 +119,9 @@
         </div>
     </div>
 
-    <!-- Main Content Container -->
+    <!-- Main Workspace -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex-1 w-full space-y-4 sm:space-y-6">
 
-        <!-- Loading Spinner -->
         <div id="loading-spinner" class="py-20 text-center">
             <div class="inline-flex p-4 rounded-full bg-emerald-50 text-emerald-600 mb-3 animate-bounce">
                 <i class="fa-solid fa-database text-2xl"></i>
@@ -106,10 +129,9 @@
             <h3 class="text-base font-bold text-slate-800">Ma'lumotlar o'qilmoqda...</h3>
         </div>
 
-        <!-- Main Workspace -->
         <div id="main-content" class="hidden space-y-4 sm:space-y-6">
 
-            <!-- KPI Dashboard & Analytics -->
+            <!-- KPI Dashboard -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5">
                 <div onclick="resetAllFilters()" class="cursor-pointer bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3 hover:border-slate-300 transition">
                     <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-base font-bold shrink-0"><i class="fa-solid fa-store"></i></div>
@@ -131,11 +153,19 @@
                     <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-base font-bold shrink-0"><i class="fa-solid fa-circle-xmark"></i></div>
                     <div><div class="text-lg font-extrabold text-rose-700" id="stat-rad">0</div><div class="text-[11px] font-semibold text-rose-600/80">Rad etildi</div></div>
                 </div>
-                <!-- CR Analytics Card -->
                 <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-3.5 sm:p-4 rounded-2xl shadow-sm flex items-center gap-3 col-span-2 sm:col-span-1">
                     <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-base font-bold shrink-0 border border-emerald-500/30"><i class="fa-solid fa-chart-line"></i></div>
                     <div><div class="text-lg font-extrabold text-emerald-400" id="stat-cr">0%</div><div class="text-[11px] font-semibold text-slate-400">Konversiya (CR)</div></div>
                 </div>
+            </div>
+
+            <!-- Pipeline Mini Chart -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide">Voronka (Pipeline) taqsimoti</h3>
+                    <span class="text-[10px] text-slate-400" id="chart-total-label"></span>
+                </div>
+                <div id="pipeline-chart" class="flex items-end gap-2 h-24"></div>
             </div>
 
             <!-- Search & Filters -->
@@ -143,7 +173,7 @@
                 <div class="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                        <input type="text" id="search-input" oninput="applyFilters()" placeholder="Qidirish... (Nomi, telefoni, manzili yoki teglar bo'yicha) [Ctrl+K]" 
+                        <input type="text" id="search-input" oninput="onSearchInput()" placeholder="Qidirish (nom, telefon, izoh)..."
                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition font-medium">
                     </div>
                     <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -154,125 +184,204 @@
                             <option value="Kelishildi">🤝 Kelishildi</option>
                             <option value="Rad etildi">❌ Rad etildi</option>
                         </select>
-                        <select id="tag-filter" onchange="applyFilters()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
-                            <option value="">Barcha Teglar</option>
-                            <option value="VIP">⭐ VIP</option>
-                            <option value="Qayta bog'lanish">🔄 Qayta bog'lanish</option>
-                            <option value="O'ylab ko'rmoqda">🤔 O'ylab ko'rmoqda</option>
+                        <select id="priority-filter" onchange="applyFilters()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
+                            <option value="">Barcha Muhimlik</option>
+                            <option value="Yuqori">🔴 Yuqori</option>
+                            <option value="O'rta">🟡 O'rta</option>
+                            <option value="Past">🟢 Past</option>
                         </select>
                         <select id="district-filter" onchange="applyFilters()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
                             <option value="">Barcha Tumanlar</option>
+                        </select>
+                        <select id="sort-select" onchange="applyFilters()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
+                            <option value="default">Saralash: standart</option>
+                            <option value="name-asc">Nomi (A-Z)</option>
+                            <option value="name-desc">Nomi (Z-A)</option>
+                            <option value="date-new">Eng yangi</option>
+                            <option value="date-old">Eng eski</option>
+                            <option value="followup">Eslatma vaqti</option>
                         </select>
                         <button onclick="resetAllFilters()" title="Filtrlarni tozalash" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 transition">
                             <i class="fa-solid fa-rotate-left"></i>
                         </button>
                     </div>
                 </div>
+                <div class="flex justify-between items-center text-[11px] text-slate-400 font-semibold">
+                    <span id="results-count">0 ta natija</span>
+                    <span id="dup-warning" class="hidden text-rose-500 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Diqqat: takroriy raqamlar aniqlandi</span>
+                </div>
             </div>
 
-            <!-- DESKTOP TABLE VIEW -->
+            <!-- Table View -->
             <div class="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
                 <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-900 text-slate-300 text-[11px] uppercase tracking-wider font-bold">
                                 <th class="py-3.5 px-4 text-center w-10">⭐</th>
-                                <th class="py-3.5 px-4 min-w-[180px]">Restoran Nomi</th>
+                                <th class="py-3.5 px-4 min-w-[180px] sortable" onclick="setSort('name')">Restoran Nomi</th>
                                 <th class="py-3.5 px-4 min-w-[150px]">Status</th>
-                                <th class="py-3.5 px-4">Teglar</th>
+                                <th class="py-3.5 px-4">Muhimlik</th>
                                 <th class="py-3.5 px-4">Tuman</th>
                                 <th class="py-3.5 px-4">Eslatma Vaqti</th>
                                 <th class="py-3.5 px-4 min-w-[140px]">Telefon</th>
-                                <th class="py-3.5 px-4 text-center">Tezkor Muloqot</th>
-                                <th class="py-3.5 px-4 text-center w-16">Batafsil</th>
+                                <th class="py-3.5 px-4 text-center">AI B2B Pitch</th>
+                                <th class="py-3.5 px-4 text-center w-20">Amallar</th>
                             </tr>
                         </thead>
                         <tbody id="restaurant-table-body" class="divide-y divide-slate-100 text-xs font-medium text-slate-700"></tbody>
                     </table>
                 </div>
+                <div id="pagination-bar" class="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs font-semibold text-slate-500"></div>
             </div>
 
-            <!-- MOBILE CARDS VIEW -->
+            <!-- Mobile Cards View -->
             <div id="restaurant-card-grid" class="grid grid-cols-1 gap-3 md:hidden"></div>
+            <div id="pagination-bar-mobile" class="flex items-center justify-between px-1 py-2 text-xs font-semibold text-slate-500 md:hidden"></div>
 
             <div id="empty-state" class="hidden py-12 text-center bg-white rounded-2xl border border-slate-200">
                 <i class="fa-solid fa-folder-open text-3xl text-slate-300 mb-2"></i>
                 <p class="text-sm font-semibold text-slate-600">Hech qanday restoran topilmadi</p>
+                <button onclick="openAddModal()" class="mt-3 text-xs font-bold text-emerald-600 hover:underline">+ Birinchi leadni qo'shish</button>
             </div>
 
         </div>
-
     </main>
 
-    <!-- Modal 1: Detail Info & Edit -->
-    <div id="detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-        <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
-            <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <h3 id="modal-title" class="font-bold text-sm sm:text-base truncate">Restoran Nomi</h3>
-                <button onclick="closeModal('detail-modal')" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <!-- Modal: Detail Info & AI Workspace -->
+    <div id="detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden no-print">
+        <div class="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+            <div class="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                    <h3 id="modal-title" class="font-bold text-sm sm:text-base truncate">Restoran Nomi</h3>
+                    <span id="modal-category" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-emerald-400 font-semibold border border-slate-700 shrink-0"></span>
+                </div>
+                <button onclick="closeModal('detail-modal')" class="text-slate-400 hover:text-white p-1 shrink-0"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar" id="modal-body"></div>
+            <div class="p-5 space-y-4 overflow-y-auto custom-scrollbar" id="modal-body"></div>
         </div>
     </div>
 
-    <!-- Modal 2: Add New Lead Form -->
-    <div id="add-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-5 space-y-4">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2"><i class="fa-solid fa-plus-circle text-emerald-600"></i> Yangi Partner Qo'shish</h3>
-                <button onclick="closeModal('add-modal')" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark"></i></button>
+    <!-- Modal: Add / Edit Lead -->
+    <div id="add-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden no-print">
+        <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+            <div class="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                <h3 id="add-modal-title" class="font-bold text-sm sm:text-base">Yangi Lead Qo'shish</h3>
+                <button onclick="closeModal('add-modal')" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <form id="add-lead-form" onsubmit="saveNewLead(event)" class="space-y-3 text-xs">
+            <div class="p-5 space-y-3 overflow-y-auto custom-scrollbar text-xs">
+                <input type="hidden" id="form-id" value="">
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1">Restoran Nomi *</label>
-                    <input type="text" id="new-name" required class="w-full p-2.5 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-emerald-500/20 font-medium">
+                    <label class="block font-bold text-slate-700 mb-1">Restoran nomi *</label>
+                    <input id="form-name" type="text" class="w-full p-2.5 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-emerald-500/20">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block font-bold text-slate-700 mb-1">Tuman</label>
-                        <input type="text" id="new-district" placeholder="Chilonzor" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium">
+                        <label class="block font-bold text-slate-700 mb-1">Kategoriya</label>
+                        <input id="form-category" type="text" placeholder="Milliy taom, kafe..." class="w-full p-2.5 bg-slate-50 border rounded-xl">
                     </div>
                     <div>
-                        <label class="block font-bold text-slate-700 mb-1">Kategoriya</label>
-                        <input type="text" id="new-category" placeholder="Milliy taomlar" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium">
+                        <label class="block font-bold text-slate-700 mb-1">Tuman</label>
+                        <input id="form-district" type="text" placeholder="Yunusobod..." class="w-full p-2.5 bg-slate-50 border rounded-xl">
                     </div>
                 </div>
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1">Telefon raqami</label>
-                    <input type="text" id="new-phone" placeholder="+998 90 123 45 67" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium">
+                    <label class="block font-bold text-slate-700 mb-1">Manzil</label>
+                    <input id="form-address" type="text" class="w-full p-2.5 bg-slate-50 border rounded-xl">
                 </div>
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1">Telegram (Username/Link)</label>
-                    <input type="text" id="new-telegram" placeholder="@username" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Telefon</label>
+                        <input id="form-phone" type="text" placeholder="+998901234567" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Telegram</label>
+                        <input id="form-telegram" type="text" placeholder="@username" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Instagram</label>
+                        <input id="form-instagram" type="text" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Web sayt</label>
+                        <input id="form-website" type="text" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Status</label>
+                        <select id="form-status" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                            <option value="Yangi">✨ Yangi</option>
+                            <option value="Aloqada">📞 Aloqada</option>
+                            <option value="Kelishildi">🤝 Kelishildi</option>
+                            <option value="Rad etildi">❌ Rad etildi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Muhimlik</label>
+                        <select id="form-priority" class="w-full p-2.5 bg-slate-50 border rounded-xl">
+                            <option value="O'rta">🟡 O'rta</option>
+                            <option value="Yuqori">🔴 Yuqori</option>
+                            <option value="Past">🟢 Past</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Izoh</label>
-                    <textarea id="new-notes" rows="2" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"></textarea>
+                    <textarea id="form-notes" rows="2" class="w-full p-2.5 bg-slate-50 border rounded-xl"></textarea>
                 </div>
-                <div class="pt-2 flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('add-modal')" class="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl">Bekor qilish</button>
-                    <button type="submit" class="px-5 py-2 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 shadow-md">Saqlash</button>
+                <div class="pt-2 flex justify-end gap-2 border-t">
+                    <button onclick="closeModal('add-modal')" class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl mt-2">Bekor qilish</button>
+                    <button onclick="submitLeadForm()" class="px-5 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 mt-2">Saqlash</button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- Modal 3: B2B Script Templates -->
-    <div id="script-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden p-5 space-y-4">
+    <!-- Modal: AI Settings Config -->
+    <div id="ai-settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-5 space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2"><i class="fa-solid fa-comment-dots text-emerald-600"></i> B2B Muloqot Shablonlari</h3>
-                <button onclick="closeModal('script-modal')" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark"></i></button>
+                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-brain text-purple-600"></i> Gemini AI Sozlamalari
+                </h3>
+                <button onclick="closeModal('ai-settings-modal')" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-3 text-xs">
-                <div class="p-3 bg-slate-50 border rounded-xl space-y-1.5">
-                    <div class="flex justify-between font-bold text-slate-700"><span>1. Birinchi Taklif (Cold Pitch)</span> <button onclick="copyText('script-1')" class="text-emerald-600 hover:underline"><i class="fa-regular fa-copy"></i> Nusxalash</button></div>
-                    <p id="script-1" class="text-slate-600 font-mono text-[11px]">Assalomu alaykum! Manady.uz loyihasidan bog'lanmoqdamiz. Restoraningizdagi taomlar isrofilini kamaytirish va qo'shimcha daromad olish bo'yicha hamkorlik taklif etamiz. Qachon gaplashsak bo'ladi?</p>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Gemini API Key:</label>
+                    <input type="password" id="api-key-input" placeholder="AIza..." class="w-full p-2.5 bg-slate-50 border rounded-xl font-mono text-xs focus:ring-2 focus:ring-purple-500/20">
+                    <p class="text-[10px] text-slate-400 mt-1">Kalitni <a href="https://aistudio.google.com/apikey" target="_blank" class="text-purple-600 underline">Google AI Studio</a> orqali bepul olishingiz mumkin.</p>
                 </div>
-                <div class="p-3 bg-slate-50 border rounded-xl space-y-1.5">
-                    <div class="flex justify-between font-bold text-slate-700"><span>2. Qayta Bog'lanish (Follow-up)</span> <button onclick="copyText('script-2')" class="text-emerald-600 hover:underline"><i class="fa-regular fa-copy"></i> Nusxalash</button></div>
-                    <p id="script-2" class="text-slate-600 font-mono text-[11px]">Assalomu alaykum! Kecha taklifimiz bo'yicha gaplashgandik. Manady.uz tizimiga ulanish bo'yicha qaroringizni bilmoqchi edik?</p>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Model:</label>
+                    <select id="model-select" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold">
+                        <option value="gemini-2.5-flash">gemini-2.5-flash (tavsiya etiladi)</option>
+                        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (tezkor/arzon)</option>
+                        <option value="gemini-3.5-flash">gemini-3.5-flash (kuchli)</option>
+                        <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite</option>
+                    </select>
                 </div>
+                <p class="text-[11px] text-slate-500"><i class="fa-solid fa-shield-halved"></i> API kalitingiz faqat shu brauzerning ichki LocalStorage xotirasida saqlanadi va hech qayerga yuborilmaydi (faqat to'g'ridan-to'g'ri Google serveriga).</p>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button onclick="saveApiKey()" class="px-5 py-2 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 shadow-md">Saqlash</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm dialog -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-5 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <p id="confirm-text" class="text-sm font-bold text-slate-800 flex-1">Ishonchingiz komilmi?</p>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('confirm-modal')" class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs">Yo'q</button>
+                <button id="confirm-yes-btn" class="px-4 py-2 bg-rose-600 text-white font-bold rounded-xl text-xs hover:bg-rose-500">Ha, davom etish</button>
             </div>
         </div>
     </div>
@@ -280,38 +389,84 @@
     <!-- Application Engine Script -->
     <script>
         const EXCEL_FILE_PATH = './data/Toshkent_Restoranlar.xlsx';
-        const STORAGE_KEY = 'manady_restaurants_crm_v6';
-        const DEFAULT_MSG = "Assalomu alaykum! Manady.uz loyihasidan bog'lanmoqdamiz. Restoraningiz bilan hamkorlik bo'yicha gaplashsak bo'ladimi?";
+        const STORAGE_KEY = 'manady_restaurants_crm_v8';
+        const GEMINI_API_KEY_KEY = 'manady_gemini_api_key';
+        const GEMINI_MODEL_KEY = 'manady_gemini_model';
+        const DEFAULT_MODEL = 'gemini-2.5-flash';
+        const PAGE_SIZE = 15;
 
         let restaurants = [];
         let filteredData = [];
-        let notifiedIds = new Set();
         let onlyDueReminders = false;
+        let currentPage = 1;
+        let sortState = { key: null, dir: 1 };
+        let searchDebounce = null;
 
-        document.addEventListener("DOMContentLoaded", () => { 
+        document.addEventListener("DOMContentLoaded", () => {
             initApp();
-            requestNotificationPermission();
-            setInterval(checkReminderSystem, 10000); 
-            
-            // Shortcuts Engine
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') { closeModal('detail-modal'); closeModal('add-modal'); closeModal('script-modal'); }
-                if (e.ctrlKey && e.key === 'k') { e.preventDefault(); document.getElementById('search-input').focus(); }
-                if (e.ctrlKey && e.key === 'm') { e.preventDefault(); openAddModal(); }
+            setInterval(checkReminderSystem, 10000);
+            document.addEventListener('click', (e) => {
+                const menu = document.getElementById('export-menu');
+                if (menu && !menu.classList.contains('hidden') && !e.target.closest('#export-menu') && !e.target.closest('button[onclick*="export-menu"]')) {
+                    menu.classList.add('hidden');
+                }
             });
         });
 
-        function requestNotificationPermission() {
-            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-                Notification.requestPermission();
-            }
+        // ---------- Utilities ----------
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
+        function showToast(message, type = 'info') {
+            const colors = {
+                success: 'bg-emerald-600', error: 'bg-rose-600', info: 'bg-slate-800', warn: 'bg-amber-600'
+            };
+            const icons = {
+                success: 'fa-circle-check', error: 'fa-circle-exclamation', info: 'fa-circle-info', warn: 'fa-triangle-exclamation'
+            };
+            const el = document.createElement('div');
+            el.className = `toast ${colors[type] || colors.info} text-white text-xs font-bold px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 max-w-xs`;
+            el.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${escapeHtml(message)}</span>`;
+            document.getElementById('toast-container').appendChild(el);
+            setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 3500);
+        }
+
+        function confirmAction(message, onYes) {
+            document.getElementById('confirm-text').innerText = message;
+            const btn = document.getElementById('confirm-yes-btn');
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', () => { closeModal('confirm-modal'); onYes(); });
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function logActivity(item, text) {
+            if (!item.history) item.history = [];
+            item.history.unshift({ text, date: new Date().toISOString() });
+            if (item.history.length > 30) item.history.length = 30;
+        }
+
+        function formatDateShort(iso) {
+            try {
+                const d = new Date(iso);
+                return d.toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            } catch (e) { return iso; }
+        }
+
+        // ---------- Init & Data Loading ----------
         async function initApp() {
             const savedData = localStorage.getItem(STORAGE_KEY);
             if (savedData) {
                 try {
                     restaurants = JSON.parse(savedData);
+                    restaurants.forEach(r => { if (!r.priority) r.priority = "O'rta"; if (!r.history) r.history = []; });
                     renderApp();
                     return;
                 } catch (e) { console.error(e); }
@@ -326,7 +481,7 @@
             try {
                 const response = await fetch(EXCEL_FILE_PATH);
                 if (!response.ok) throw new Error(`Fayl topilmadi`);
-                
+
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -335,46 +490,80 @@
                 parseAndSetData(json);
                 saveToLocalStorage();
                 renderApp();
+                showToast(`${restaurants.length} ta restoran yuklandi`, 'success');
 
             } catch (error) {
-                document.getElementById('loading-spinner').innerHTML = `<p class="text-rose-600 font-bold text-xs">Excel yuklanmadi. Live Server yoniqligini va fayl yo'lini tekshiring.</p>`;
+                document.getElementById('loading-spinner').innerHTML = `
+                    <div class="max-w-sm mx-auto">
+                        <i class="fa-solid fa-folder-open text-3xl text-slate-300 mb-3"></i>
+                        <p class="text-slate-600 font-bold text-sm mb-1">Excel fayl topilmadi</p>
+                        <p class="text-slate-400 text-xs mb-4">./data/Toshkent_Restoranlar.xlsx joylashuvida fayl yo'q yoki Live Server ishlamayapti. Boshqatdan boshlash uchun qo'lda lead qo'sha olasiz yoki fayl yuklang.</p>
+                        <button onclick="startEmpty()" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-500">Bo'sh bazadan boshlash</button>
+                    </div>`;
             }
         }
 
-        function renderApp() {
-            filteredData = [...restaurants];
-            populateFilterDropdowns();
-            applyFilters();
-            checkReminderSystem();
-            document.getElementById('loading-spinner').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
+        function startEmpty() {
+            restaurants = [];
+            saveToLocalStorage();
+            renderApp();
         }
 
-        function parseAndSetData(json) {
+        function importExcelManual(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    const before = restaurants.length;
+                    parseAndSetData(json, true);
+                    saveToLocalStorage();
+                    renderApp();
+                    showToast(`${restaurants.length - before} ta yangi lead qo'shildi`, 'success');
+                } catch (err) {
+                    showToast("Fayl o'qishda xatolik. Formatni tekshiring.", 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function parseAndSetData(json, append = false) {
             if (json.length < 2) return;
-            restaurants = [];
+            if (!append) restaurants = [];
+            const existingPhones = new Set(restaurants.map(r => r.phone).filter(Boolean));
+
             for (let i = 1; i < json.length; i++) {
                 const row = json[i];
                 if (!row || row.length === 0) continue;
+                const phone = formatPhoneNumber(String(row[5] || ''));
+                if (append && phone && existingPhones.has(phone)) continue;
 
                 restaurants.push({
-                    id: Date.now() + i,
+                    id: Date.now() + i + Math.floor(Math.random() * 1000),
                     pinned: false,
-                    tag: '',
                     name: row[1] || 'Nomsiz Restoran',
                     category: row[2] || 'Umumiy',
                     district: row[3] || 'Toshkent',
                     address: row[4] || '-',
-                    phone: formatPhoneNumber(String(row[5] || '')),
+                    phone: phone,
                     instagram: row[6] || '',
                     telegram: row[7] || '',
                     website: row[8] || '',
                     maps: row[9] || '',
-                    work_hours: row[10] || 'Ko\'rsatilmadi',
+                    work_hours: row[10] || "Ko'rsatilmadi",
                     status: 'Yangi',
+                    priority: "O'rta",
                     notes: row[12] || '',
-                    followUpDate: ''
+                    followUpDate: '',
+                    createdAt: new Date().toISOString(),
+                    history: [{ text: "Excel orqali qo'shildi", date: new Date().toISOString() }]
                 });
+                if (phone) existingPhones.add(phone);
             }
         }
 
@@ -386,161 +575,177 @@
             return phone;
         }
 
-        function togglePin(id) {
-            const item = restaurants.find(r => r.id === id);
-            if (item) {
-                item.pinned = !item.pinned;
-                saveToLocalStorage();
-                applyFilters();
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(restaurants));
+            } catch (e) {
+                showToast("Xotira to'lgan bo'lishi mumkin. Backup oling.", 'error');
             }
         }
 
-        function updateTag(id, tagVal) {
-            const item = restaurants.find(r => r.id === id);
-            if (item) {
-                item.tag = tagVal;
-                saveToLocalStorage();
-                applyFilters();
-            }
+        function renderApp() {
+            populateFilterDropdowns();
+            applyFilters();
+            checkReminderSystem();
+            document.getElementById('loading-spinner').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
         }
 
+        // ---------- Status / Field updates ----------
         function updateStatus(id, newStatus) {
             const item = restaurants.find(r => r.id === id);
             if (item) {
+                logActivity(item, `Status o'zgartirildi: ${item.status} → ${newStatus}`);
                 item.status = newStatus;
-                saveToLocalStorage();
-                applyFilters();
+                saveToLocalStorage(); applyFilters();
+                showToast(`Status yangilandi: ${newStatus}`, 'success');
             }
+        }
+
+        function updatePriority(id, newPriority) {
+            const item = restaurants.find(r => r.id === id);
+            if (item) { item.priority = newPriority; saveToLocalStorage(); applyFilters(); }
         }
 
         function updateNotes(id, noteVal) {
             const item = restaurants.find(r => r.id === id);
-            if (item) {
-                item.notes = noteVal;
-                saveToLocalStorage();
-            }
+            if (item) { item.notes = noteVal; saveToLocalStorage(); }
         }
 
         function updateFollowUp(id, dateVal) {
             const item = restaurants.find(r => r.id === id);
             if (item) {
                 item.followUpDate = dateVal;
-                notifiedIds.delete(id);
-                saveToLocalStorage();
-                applyFilters();
-                checkReminderSystem();
+                if (dateVal) logActivity(item, `Eslatma o'rnatildi: ${dateVal.replace('T', ' ')}`);
+                saveToLocalStorage(); applyFilters(); checkReminderSystem();
             }
+        }
+
+        function togglePin(id) {
+            const item = restaurants.find(r => r.id === id);
+            if (item) { item.pinned = !item.pinned; saveToLocalStorage(); applyFilters(); }
         }
 
         function deleteLead(id) {
-            if (confirm("Ushbu restoranni o'chirmoqchimisiz?")) {
+            const item = restaurants.find(r => r.id === id);
+            if (!item) return;
+            confirmAction(`"${item.name}" o'chirilsinmi? Bu amalni qaytarib bo'lmaydi.`, () => {
                 restaurants = restaurants.filter(r => r.id !== id);
                 saveToLocalStorage();
-                closeModal('detail-modal');
+                populateFilterDropdowns();
                 applyFilters();
-            }
+                closeModal('detail-modal');
+                showToast("Lead o'chirildi", 'success');
+            });
         }
 
-        function saveToLocalStorage() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(restaurants));
-        }
-
+        // ---------- Reminder system ----------
         function checkReminderSystem() {
             const now = new Date();
-            const currentIsoMin = now.toISOString().slice(0, 16);
             let dueItemsCount = 0;
-
             restaurants.forEach(item => {
-                if (item.followUpDate) {
-                    const itemDate = new Date(item.followUpDate);
-                    if (itemDate <= now) {
-                        dueItemsCount++;
-                        if (!notifiedIds.has(item.id) && item.followUpDate.slice(0, 16) <= currentIsoMin) {
-                            speakAlert(`Eslatma! ${item.name} bilan bog'lanish vaqti bo'ldi.`);
-                            notifiedIds.add(item.id);
-                        }
-                    }
-                }
+                if (item.followUpDate && new Date(item.followUpDate) <= now) dueItemsCount++;
             });
-
             const badgeBtn = document.getElementById('reminder-badge-btn');
-            const dueCountSpan = document.getElementById('due-count');
-            
             if (dueItemsCount > 0) {
                 badgeBtn.classList.remove('hidden');
-                dueCountSpan.innerText = dueItemsCount;
-            } else {
-                badgeBtn.classList.add('hidden');
-            }
+                document.getElementById('due-count').innerText = dueItemsCount;
+            } else { badgeBtn.classList.add('hidden'); }
         }
 
-        function speakAlert(text) {
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'uz-UZ'; utterance.rate = 0.9;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        function toggleDueFilter() {
-            onlyDueReminders = !onlyDueReminders;
-            applyFilters();
-        }
-
-        function filterByStatus(statusName) {
-            document.getElementById('status-filter').value = statusName;
-            onlyDueReminders = false;
-            applyFilters();
-        }
-
+        function toggleDueFilter() { onlyDueReminders = !onlyDueReminders; currentPage = 1; applyFilters(); }
+        function filterByStatus(s) { document.getElementById('status-filter').value = s; currentPage = 1; applyFilters(); }
         function resetAllFilters() {
             document.getElementById('search-input').value = '';
             document.getElementById('status-filter').value = '';
-            document.getElementById('tag-filter').value = '';
+            document.getElementById('priority-filter').value = '';
             document.getElementById('district-filter').value = '';
-            onlyDueReminders = false;
+            document.getElementById('sort-select').value = 'default';
+            onlyDueReminders = false; currentPage = 1;
+            sortState = { key: null, dir: 1 };
+            applyFilters();
+        }
+
+        function onSearchInput() {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => { currentPage = 1; applyFilters(); }, 250);
+        }
+
+        function setSort(key) {
+            if (sortState.key === key) sortState.dir *= -1; else { sortState.key = key; sortState.dir = 1; }
             applyFilters();
         }
 
         function populateFilterDropdowns() {
             const districts = [...new Set(restaurants.map(r => r.district).filter(Boolean))].sort();
-            populateSelect('district-filter', districts, 'Barcha Tumanlar');
+            const select = document.getElementById('district-filter');
+            const current = select.value;
+            select.innerHTML = `<option value="">Barcha Tumanlar</option>`;
+            districts.forEach(d => { select.innerHTML += `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`; });
+            select.value = current;
         }
 
-        function populateSelect(id, items, defaultText) {
-            const select = document.getElementById(id);
-            const curr = select.value;
-            select.innerHTML = `<option value="">${defaultText}</option>`;
-            items.forEach(item => { select.innerHTML += `<option value="${item}">${item}</option>`; });
-            select.value = curr;
-        }
-
+        // ---------- Filtering / Sorting / Pagination ----------
         function applyFilters() {
-            const query = document.getElementById('search-input').value.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const query = document.getElementById('search-input').value.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF\u0100-\u017F]/g, '');
             const status = document.getElementById('status-filter').value;
-            const tag = document.getElementById('tag-filter').value;
+            const priority = document.getElementById('priority-filter').value;
             const district = document.getElementById('district-filter').value;
+            const sortSelectVal = document.getElementById('sort-select').value;
             const now = new Date();
 
             filteredData = restaurants.filter(item => {
-                const searchTarget = (item.name + item.address + item.phone + item.notes + (item.tag||'')).toLowerCase().replace(/[^a-z0-9]/g, '');
+                const searchTarget = (item.name + item.address + item.phone + item.notes).toLowerCase().replace(/[^a-z0-9\u0400-\u04FF\u0100-\u017F]/g, '');
                 const matchesQuery = !query || searchTarget.includes(query);
                 const matchesStatus = !status || item.status === status;
-                const matchesTag = !tag || item.tag === tag;
+                const matchesPriority = !priority || item.priority === priority;
                 const matchesDistrict = !district || item.district === district;
                 const matchesDue = !onlyDueReminders || (item.followUpDate && new Date(item.followUpDate) <= now);
-
-                return matchesQuery && matchesStatus && matchesTag && matchesDistrict && matchesDue;
+                return matchesQuery && matchesStatus && matchesPriority && matchesDistrict && matchesDue;
             });
 
-            // Sort by pinned first
+            if (sortState.key === 'name') {
+                filteredData.sort((a, b) => a.name.localeCompare(b.name) * sortState.dir);
+            } else if (sortSelectVal === 'name-asc') {
+                filteredData.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (sortSelectVal === 'name-desc') {
+                filteredData.sort((a, b) => b.name.localeCompare(a.name));
+            } else if (sortSelectVal === 'date-new') {
+                filteredData.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            } else if (sortSelectVal === 'date-old') {
+                filteredData.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+            } else if (sortSelectVal === 'followup') {
+                filteredData.sort((a, b) => {
+                    if (!a.followUpDate && !b.followUpDate) return 0;
+                    if (!a.followUpDate) return 1;
+                    if (!b.followUpDate) return -1;
+                    return new Date(a.followUpDate) - new Date(b.followUpDate);
+                });
+            }
+
             filteredData.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
+            document.getElementById('results-count').innerText = `${filteredData.length} ta natija`;
+            checkDuplicates();
             renderData();
+        }
+
+        function checkDuplicates() {
+            const phoneCounts = {};
+            restaurants.forEach(r => { if (r.phone) phoneCounts[r.phone] = (phoneCounts[r.phone] || 0) + 1; });
+            const hasDup = Object.values(phoneCounts).some(c => c > 1);
+            document.getElementById('dup-warning').classList.toggle('hidden', !hasDup);
         }
 
         function renderData() {
             updateStats();
+            renderPipelineChart();
+
+            const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+            if (currentPage > totalPages) currentPage = totalPages;
+            const startIdx = (currentPage - 1) * PAGE_SIZE;
+            const pageItems = filteredData.slice(startIdx, startIdx + PAGE_SIZE);
+
             const tbody = document.getElementById('restaurant-table-body');
             const cardGrid = document.getElementById('restaurant-card-grid');
             const emptyState = document.getElementById('empty-state');
@@ -549,92 +754,132 @@
             tbody.innerHTML = ''; cardGrid.innerHTML = '';
 
             if (filteredData.length === 0) {
-                emptyState.classList.remove('hidden'); return;
+                emptyState.classList.remove('hidden');
+                document.getElementById('pagination-bar').innerHTML = '';
+                document.getElementById('pagination-bar-mobile').innerHTML = '';
+                return;
             } else { emptyState.classList.add('hidden'); }
 
-            filteredData.forEach((item, index) => {
-                const tgLink = formatTgLink(item.telegram, item.phone);
+            pageItems.forEach((item) => {
                 const isUrgent = item.followUpDate && new Date(item.followUpDate) <= now;
+                const priorityBadge = renderPriorityBadge(item.priority);
 
-                // Desktop Row
                 const row = document.createElement('tr');
-                row.className = `transition border-b border-slate-100 ${item.pinned ? 'bg-amber-50/40' : ''} ${isUrgent ? 'bg-rose-50/70 border-rose-200 font-semibold' : 'hover:bg-slate-50'}`;
+                row.className = `transition border-b border-slate-100 ${isUrgent ? 'bg-rose-50/70 border-rose-200' : 'hover:bg-slate-50'}`;
                 row.innerHTML = `
                     <td class="py-3.5 px-4 text-center cursor-pointer" onclick="togglePin(${item.id})">
                         <i class="fa-star ${item.pinned ? 'fa-solid text-amber-400' : 'fa-regular text-slate-300'}"></i>
                     </td>
                     <td class="py-3.5 px-4">
-                        <div class="font-bold text-slate-900 text-xs hover:text-emerald-600 cursor-pointer flex items-center gap-1.5" onclick="openModal(${item.id})">
-                            ${isUrgent ? '<i class="fa-solid fa-bell text-rose-500 animate-bounce"></i>' : ''}
-                            <span>${item.name}</span>
-                        </div>
-                        <div class="text-[11px] text-slate-400 font-normal truncate max-w-[180px]">${item.address}</div>
+                        <div class="font-bold text-slate-900 text-xs hover:text-emerald-600 cursor-pointer" onclick="openModal(${item.id})">${escapeHtml(item.name)}</div>
+                        <div class="text-[11px] text-slate-400 font-normal truncate max-w-[180px]">${escapeHtml(item.address)}</div>
                     </td>
                     <td class="py-3.5 px-4">${renderStatusSelector(item.id, item.status)}</td>
-                    <td class="py-3.5 px-4">${renderTagSelector(item.id, item.tag)}</td>
-                    <td class="py-3.5 px-4 font-semibold text-slate-600">${item.district}</td>
-                    <td class="py-3.5 px-4">
-                        ${item.followUpDate ? `<span class="px-2 py-1 rounded-lg text-[10px] font-bold ${isUrgent ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}">${item.followUpDate.replace('T', ' ')}</span>` : '<span class="text-slate-300">-</span>'}
-                    </td>
+                    <td class="py-3.5 px-4">${priorityBadge}</td>
+                    <td class="py-3.5 px-4 font-semibold text-slate-600">${escapeHtml(item.district)}</td>
+                    <td class="py-3.5 px-4">${item.followUpDate ? `<span class="px-2 py-1 rounded-lg text-[10px] font-bold ${isUrgent ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}">${escapeHtml(item.followUpDate.replace('T', ' '))}</span>` : '-'}</td>
                     <td class="py-3.5 px-4 font-mono text-xs">${renderPhoneCallButton(item.phone)}</td>
                     <td class="py-3.5 px-4 text-center">
-                        <div class="flex items-center justify-center gap-1.5">
-                            ${tgLink ? `<a href="${tgLink}" target="_blank" title="Telegram-da yozish" class="w-7 h-7 rounded-lg bg-sky-50 text-sky-500 flex items-center justify-center hover:bg-sky-500 hover:text-white transition"><i class="fa-brands fa-telegram"></i></a>` : ''}
-                            ${item.instagram ? `<a href="${formatUrl(item.instagram, 'instagram')}" target="_blank" class="w-7 h-7 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-600 hover:text-white transition"><i class="fa-brands fa-instagram"></i></a>` : ''}
-                        </div>
+                        <button onclick="generateAIPitch(${item.id})" class="px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white rounded-lg font-bold text-[11px] transition border border-purple-200 flex items-center justify-center gap-1 mx-auto">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI Pitch
+                        </button>
                     </td>
-                    <td class="py-3.5 px-4 text-center">
-                        <button onclick="openModal(${item.id})" class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 transition"><i class="fa-solid fa-eye"></i></button>
+                    <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                        <button onclick="openModal(${item.id})" title="Batafsil" class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 transition"><i class="fa-solid fa-eye"></i></button>
+                        <button onclick="deleteLead(${item.id})" title="O'chirish" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 transition"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(row);
 
-                // Mobile Card
                 const card = document.createElement('div');
-                card.className = `p-4 rounded-2xl border shadow-sm space-y-3 transition ${isUrgent ? 'urgent-reminder' : 'bg-white border-slate-200/80'}`;
+                card.className = `bg-white p-4 rounded-2xl border shadow-sm space-y-2.5 ${isUrgent ? 'urgent-reminder' : 'border-slate-200/80'}`;
                 card.innerHTML = `
                     <div class="flex justify-between items-start gap-2">
-                        <div>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase">#${index + 1} • ${item.district}</span>
-                            <h3 class="font-extrabold text-slate-900 text-sm cursor-pointer flex items-center gap-1.5" onclick="openModal(${item.id})">
-                                <i onclick="togglePin(${item.id})" class="fa-star ${item.pinned ? 'fa-solid text-amber-400' : 'fa-regular text-slate-300'}"></i>
-                                <span>${item.name}</span>
-                            </h3>
+                        <div class="min-w-0">
+                            <div class="font-bold text-slate-900 text-sm truncate" onclick="openModal(${item.id})">${escapeHtml(item.name)}</div>
+                            <div class="text-[11px] text-slate-400 truncate">${escapeHtml(item.district)} · ${escapeHtml(item.address)}</div>
                         </div>
-                        ${renderTagSelector(item.id, item.tag)}
+                        <i class="fa-star text-lg shrink-0 ${item.pinned ? 'fa-solid text-amber-400' : 'fa-regular text-slate-300'}" onclick="togglePin(${item.id})"></i>
                     </div>
-                    <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
-                        <span class="text-[11px] font-bold text-slate-500">Status:</span>
-                        ${renderStatusSelector(item.id, item.status)}
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="flex-1">${renderPhoneCallButton(item.phone, true)}</div>
-                        <button onclick="openModal(${item.id})" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fa-solid fa-ellipsis"></i></button>
+                    <div class="flex items-center gap-2 flex-wrap">${renderStatusSelector(item.id, item.status)}${priorityBadge}</div>
+                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                        ${renderPhoneCallButton(item.phone)}
+                        <div class="flex items-center gap-1">
+                            <button onclick="generateAIPitch(${item.id})" class="px-2.5 py-1.5 bg-purple-50 text-purple-700 rounded-lg font-bold text-[11px] border border-purple-200"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                            <button onclick="openModal(${item.id})" class="px-2.5 py-1.5 bg-slate-50 text-slate-600 rounded-lg font-bold text-[11px] border border-slate-200"><i class="fa-solid fa-eye"></i></button>
+                            <button onclick="deleteLead(${item.id})" class="px-2.5 py-1.5 bg-rose-50 text-rose-600 rounded-lg font-bold text-[11px] border border-rose-200"><i class="fa-solid fa-trash"></i></button>
+                        </div>
                     </div>
                 `;
                 cardGrid.appendChild(card);
             });
+
+            renderPagination(totalPages);
         }
 
-        function renderPhoneCallButton(phoneStr, fullWidth = false) {
+        function renderPagination(totalPages) {
+            const info = `${filteredData.length} tadan ${Math.min(filteredData.length, (currentPage - 1) * PAGE_SIZE + 1)}-${Math.min(filteredData.length, currentPage * PAGE_SIZE)} ko'rsatilmoqda`;
+            const controls = `
+                <div class="flex items-center gap-1.5">
+                    <button onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg border ${currentPage <= 1 ? 'text-slate-300 border-slate-100' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span class="px-2">${currentPage} / ${totalPages}</span>
+                    <button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg border ${currentPage >= totalPages ? 'text-slate-300 border-slate-100' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>`;
+            const html = `<span>${info}</span>${controls}`;
+            document.getElementById('pagination-bar').innerHTML = totalPages > 1 ? html : `<span>${info}</span>`;
+            document.getElementById('pagination-bar-mobile').innerHTML = totalPages > 1 ? html : `<span>${info}</span>`;
+        }
+
+        function goToPage(p) {
+            const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+            if (p < 1 || p > totalPages) return;
+            currentPage = p;
+            renderData();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderPipelineChart() {
+            const stages = [
+                { key: 'Yangi', color: 'bg-blue-500', label: 'Yangi' },
+                { key: 'Aloqada', color: 'bg-amber-500', label: 'Aloqada' },
+                { key: 'Kelishildi', color: 'bg-emerald-500', label: 'Kelishildi' },
+                { key: 'Rad etildi', color: 'bg-rose-400', label: 'Rad etildi' }
+            ];
+            const total = restaurants.length || 1;
+            const container = document.getElementById('pipeline-chart');
+            document.getElementById('chart-total-label').innerText = `Jami: ${restaurants.length} ta`;
+            container.innerHTML = stages.map(s => {
+                const count = restaurants.filter(r => r.status === s.key).length;
+                const pct = Math.max(4, Math.round((count / total) * 100));
+                return `
+                    <div class="flex-1 flex flex-col items-center justify-end h-full gap-1">
+                        <span class="text-[10px] font-bold text-slate-600">${count}</span>
+                        <div class="${s.color} w-full rounded-t-lg transition-all" style="height:${pct}%"></div>
+                        <span class="text-[10px] font-semibold text-slate-400">${s.label}</span>
+                    </div>`;
+            }).join('');
+        }
+
+        function renderPriorityBadge(priority) {
+            const map = {
+                "Yuqori": "bg-rose-50 text-rose-700 border-rose-200",
+                "O'rta": "bg-amber-50 text-amber-700 border-amber-200",
+                "Past": "bg-slate-50 text-slate-500 border-slate-200"
+            };
+            const cls = map[priority] || map["O'rta"];
+            return `<span class="px-2 py-1 rounded-lg text-[10px] font-bold border ${cls}">${escapeHtml(priority || "O'rta")}</span>`;
+        }
+
+        function renderPhoneCallButton(phoneStr) {
             if (!phoneStr) return `<span class="text-slate-400 text-xs italic">Mavjud emas</span>`;
-            const cleanPhone = phoneStr.replace(/[^0-9+]/g, '');
-            return `
-                <a href="tel:${cleanPhone}" class="${fullWidth ? 'w-full justify-center' : ''} inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-xl font-bold text-xs transition border border-emerald-200/60">
-                    <i class="fa-solid fa-phone"></i> <span>${phoneStr}</span>
-                </a>
-            `;
+            const safePhone = escapeHtml(phoneStr);
+            const telHref = phoneStr.replace(/[^0-9+]/g, '');
+            return `<a href="tel:${telHref}" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold text-xs border border-emerald-200"><i class="fa-solid fa-phone text-[10px]"></i> ${safePhone}</a>`;
         }
 
         function renderStatusSelector(id, currentStatus) {
-            let badgeStyle = "bg-slate-100 text-slate-700 border-slate-200";
-            if (currentStatus === 'Yangi') badgeStyle = "bg-blue-50 text-blue-700 border-blue-200";
-            if (currentStatus === 'Aloqada') badgeStyle = "bg-amber-50 text-amber-700 border-amber-200";
-            if (currentStatus === 'Kelishildi') badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200";
-            if (currentStatus === 'Rad etildi') badgeStyle = "bg-rose-50 text-rose-700 border-rose-200";
-
             return `
-                <select onchange="updateStatus(${id}, this.value)" class="text-xs font-bold px-2 py-1 rounded-xl border cursor-pointer ${badgeStyle}">
+                <select onchange="updateStatus(${id}, this.value)" class="text-xs font-bold px-2 py-1 rounded-xl border cursor-pointer bg-white">
                     <option value="Yangi" ${currentStatus === 'Yangi' ? 'selected' : ''}>✨ Yangi</option>
                     <option value="Aloqada" ${currentStatus === 'Aloqada' ? 'selected' : ''}>📞 Aloqada</option>
                     <option value="Kelishildi" ${currentStatus === 'Kelishildi' ? 'selected' : ''}>🤝 Kelishildi</option>
@@ -643,114 +888,326 @@
             `;
         }
 
-        function renderTagSelector(id, currentTag) {
-            return `
-                <select onchange="updateTag(${id}, this.value)" class="text-[10px] font-bold px-2 py-1 rounded-lg border bg-slate-50 text-slate-600 border-slate-200">
-                    <option value="">Teg yo'q</option>
-                    <option value="VIP" ${currentTag === 'VIP' ? 'selected' : ''}>⭐ VIP</option>
-                    <option value="Qayta bog'lanish" ${currentTag === 'Qayta bog\'lanish' ? 'selected' : ''}>🔄 Qayta bog'lanish</option>
-                    <option value="O'ylab ko'rmoqda" ${currentTag === 'O\'ylab ko\'rmoqda' ? 'selected' : ''}>🤔 O'ylab ko'rmoqda</option>
-                </select>
+        function updateStats() {
+            const total = restaurants.length;
+            const kelishildi = restaurants.filter(r => r.status === 'Kelishildi').length;
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-yangi').innerText = restaurants.filter(r => r.status === 'Yangi').length;
+            document.getElementById('stat-aloqada').innerText = restaurants.filter(r => r.status === 'Aloqada').length;
+            document.getElementById('stat-kelishildi').innerText = kelishildi;
+            document.getElementById('stat-rad').innerText = restaurants.filter(r => r.status === 'Rad etildi').length;
+            document.getElementById('stat-cr').innerText = total > 0 ? `${((kelishildi / total) * 100).toFixed(1)}%` : '0%';
+        }
+
+        // ---------- GEMINI AI INTEGRATION ----------
+        async function callGeminiAPI(promptText) {
+            const apiKey = localStorage.getItem(GEMINI_API_KEY_KEY);
+            if (!apiKey) {
+                return { error: true, text: "⚠️ Avval AI Config bo'limida Gemini API Key kiriting." };
+            }
+            const model = localStorage.getItem(GEMINI_MODEL_KEY) || DEFAULT_MODEL;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+                });
+
+                if (!response.ok) {
+                    const errBody = await response.json().catch(() => null);
+                    const msg = errBody && errBody.error && errBody.error.message ? errBody.error.message : `HTTP ${response.status}`;
+                    return { error: true, text: `⚠️ Gemini xatosi: ${msg}` };
+                }
+                const data = await response.json();
+                const text = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]
+                    ? data.candidates[0].content.parts[0].text
+                    : null;
+                if (!text) return { error: true, text: "⚠️ AI bo'sh javob qaytardi. Qaytadan urinib ko'ring." };
+                return { error: false, text };
+            } catch (err) {
+                console.error(err);
+                return { error: true, text: "⚠️ Tarmoq xatosi. Internet aloqasini va API Key to'g'riligini tekshiring." };
+            }
+        }
+
+        async function generateAIPitch(id) {
+            const item = restaurants.find(r => r.id === id);
+            if (!item) return;
+
+            openModal(id);
+            const aiBox = document.getElementById('ai-response-box');
+            aiBox.innerHTML = `<div class="p-3 bg-purple-50 text-purple-700 font-bold text-xs animate-pulse flex items-center gap-2"><i class="fa-solid fa-spinner animate-spin"></i> Gemini AI restoran uchun B2B sotuv xabarini tuzmoqda...</div>`;
+
+            const prompt = `Siz Manady.uz (restoranlarda oziq-ovqat isrofilini kamaytiruvchi va qo'shimcha daromad keltiruvchi O'zbekistondagi B2B startap) sotuv menejerisiz.
+Quyidagi restoran uchun Telegram orqali yuboriladigan 1 ta juda ta'sirli, professional va shaxsiy B2B sotuv xabarini o'zbek tilida tayyorlab bering:
+- Restoran nomi: ${item.name}
+- Kategoriya: ${item.category}
+- Tuman: ${item.district}
+- Mavjud izoh: ${item.notes || "Yo'q"}
+
+Xabar qisqa, samimiy va hamkorlikka chaqiruvchi (CTA) bo'lsin. Emojilardan unumli foydalaning. Faqat xabar matnini qaytaring, boshqa izoh yozmang.`;
+
+            const result = await callGeminiAPI(prompt);
+            renderAIResult(aiBox, result, item.id, true);
+            if (!result.error) logActivity(item, "AI B2B pitch yaratildi");
+            saveToLocalStorage();
+        }
+
+        async function analyzeObjectionAI(id) {
+            const item = restaurants.find(r => r.id === id);
+            if (!item) return;
+
+            const aiBox = document.getElementById('ai-response-box');
+            aiBox.innerHTML = `<div class="p-3 bg-purple-50 text-purple-700 font-bold text-xs animate-pulse flex items-center gap-2"><i class="fa-solid fa-spinner animate-spin"></i> Gemini AI mijoz e'tirozini tahlil qilmoqda...</div>`;
+
+            const prompt = `Siz B2B sotuvlar va muzokaralar bo'yicha ekspertsiz.
+Restoran nomi: ${item.name}
+Status: ${item.status}
+Restoran bo'yicha izohlar/e'tiroz: "${item.notes || "Mijoz o'ylab ko'rmoqchi yoki aniq javob bermayapti"}"
+
+Ushbu restoranni Manady.uz tizimiga qo'shilishga ko'ndirish uchun sotuvchiga 3 ta aniq, amaliy strategik maslahat (Objection Handling) bering. O'zbek tilida qisqa va lo'nda javob bering, ro'yxat shaklida.`;
+
+            const result = await callGeminiAPI(prompt);
+            renderAIResult(aiBox, result, item.id, false);
+            if (!result.error) logActivity(item, "AI muzokara maslahati olindi");
+            saveToLocalStorage();
+        }
+
+        function renderAIResult(aiBox, result, itemId, isPitch) {
+            if (result.error) {
+                aiBox.innerHTML = `<div class="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">${escapeHtml(result.text)}</div>`;
+                return;
+            }
+            const encoded = encodeURIComponent(result.text);
+            aiBox.innerHTML = `
+                <div class="p-3.5 ${isPitch ? 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200' : 'bg-slate-900 border-slate-700'} border rounded-xl space-y-2">
+                    <div class="flex justify-between items-center text-xs font-bold ${isPitch ? 'text-purple-900' : 'text-emerald-400'}">
+                        <span><i class="fa-solid ${isPitch ? 'fa-wand-magic-sparkles' : 'fa-lightbulb'}"></i> ${isPitch ? 'AI Tayyorlagan Pitch:' : 'AI Muzokara Strategiyasi:'}</span>
+                        <button onclick="copyAIText('${encoded}')" class="${isPitch ? 'text-purple-700' : 'text-emerald-400'} hover:underline"><i class="fa-regular fa-copy"></i> Nusxalash</button>
+                    </div>
+                    <p class="text-xs ${isPitch ? 'text-slate-700' : 'text-slate-200'} whitespace-pre-line leading-relaxed font-sans">${escapeHtml(result.text)}</p>
+                </div>
             `;
         }
 
-        function saveQuickLead() {
-            const name = document.getElementById('quick-name').value.trim();
-            const phone = document.getElementById('quick-phone').value.trim();
-
-            if (!name) { alert("Restoran nomini kiriting!"); return; }
-
-            const newLead = {
-                id: Date.now(),
-                pinned: false,
-                tag: '',
-                name: name,
-                district: 'Toshkent',
-                category: 'Umumiy',
-                phone: formatPhoneNumber(phone),
-                telegram: '', address: '-', instagram: '', maps: '',
-                work_hours: 'Ko\'rsatilmadi', status: 'Yangi', notes: 'Tezkor paneldan qo\'shildi', followUpDate: ''
-            };
-
-            restaurants.unshift(newLead);
-            saveToLocalStorage();
-            applyFilters();
-
-            document.getElementById('quick-name').value = '';
-            document.getElementById('quick-phone').value = '';
+        function copyAIText(encoded) {
+            const text = decodeURIComponent(encoded);
+            navigator.clipboard.writeText(text).then(() => showToast('Nusxalandi!', 'success')).catch(() => showToast('Nusxalab bo\'lmadi', 'error'));
         }
 
-        function formatTgLink(tg, phone) {
-            let target = '';
-            if (tg) target = tg.replace('@', '').replace('https://t.me/', '');
-            else if (phone) target = phone.replace(/[^0-9]/g, '');
-            if (!target) return null;
-            return `https://t.me/${target}?text=${encodeURIComponent(DEFAULT_MSG)}`;
-        }
-
-        function formatUrl(val, type) {
-            if (!val) return '#';
-            if (val.startsWith('http')) return val;
-            if (type === 'instagram') return `https://instagram.com/${val.replace('@','')}`;
-            return val;
-        }
-
-        function updateStats() {
-            const total = restaurants.length;
-            const yangi = restaurants.filter(r => r.status === 'Yangi').length;
-            const aloqada = restaurants.filter(r => r.status === 'Aloqada').length;
-            const kelishildi = restaurants.filter(r => r.status === 'Kelishildi').length;
-            const rad = restaurants.filter(r => r.status === 'Rad etildi').length;
-            const cr = total > 0 ? ((kelishildi / total) * 100).toFixed(1) : 0;
-
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-yangi').innerText = yangi;
-            document.getElementById('stat-aloqada').innerText = aloqada;
-            document.getElementById('stat-kelishildi').innerText = kelishildi;
-            document.getElementById('stat-rad').innerText = rad;
-            document.getElementById('stat-cr').innerText = `${cr}%`;
-        }
-
+        // ---------- Modal Handlers ----------
         function openModal(id) {
             const item = restaurants.find(r => r.id === id);
             if (!item) return;
 
             document.getElementById('modal-title').innerText = item.name;
-            const modalBody = document.getElementById('modal-body');
+            document.getElementById('modal-category').innerText = item.category;
 
+            const historyHtml = (item.history || []).slice(0, 8).map(h =>
+                `<div class="flex justify-between gap-2 text-[11px] py-1 border-b border-slate-100 last:border-0"><span class="text-slate-600">${escapeHtml(h.text)}</span><span class="text-slate-400 shrink-0">${formatDateShort(h.date)}</span></div>`
+            ).join('') || `<p class="text-[11px] text-slate-400 italic">Tarix mavjud emas</p>`;
+
+            const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = `
                 <div class="space-y-4 text-xs">
-                    <div class="p-3 bg-slate-50 rounded-xl border flex justify-between items-center">
-                        <span class="font-bold text-slate-500">Status:</span>
-                        ${renderStatusSelector(item.id, item.status)}
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="generateAIPitch(${item.id})" class="p-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow hover:opacity-95 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI B2B Pitch Yaratish
+                        </button>
+                        <button onclick="analyzeObjectionAI(${item.id})" class="p-2.5 bg-slate-800 text-purple-300 font-bold rounded-xl border border-slate-700 hover:bg-slate-700 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-brain"></i> AI Muzokara Maslahati
+                        </button>
                     </div>
+
+                    <div id="ai-response-box"></div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="p-3 bg-slate-50 rounded-xl border">
+                            <span class="font-bold text-slate-500 block mb-1 text-[11px]">Status:</span>
+                            ${renderStatusSelector(item.id, item.status)}
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border">
+                            <span class="font-bold text-slate-500 block mb-1 text-[11px]">Muhimlik:</span>
+                            <select onchange="updatePriority(${item.id}, this.value)" class="text-xs font-bold px-2 py-1 rounded-xl border cursor-pointer bg-white w-full">
+                                <option value="Yuqori" ${item.priority === 'Yuqori' ? 'selected' : ''}>🔴 Yuqori</option>
+                                <option value="O'rta" ${item.priority === "O'rta" ? 'selected' : ''}>🟡 O'rta</option>
+                                <option value="Past" ${item.priority === 'Past' ? 'selected' : ''}>🟢 Past</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-slate-50 rounded-xl border grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span class="text-slate-400 font-bold block">Telefon</span><span class="font-semibold">${escapeHtml(item.phone || '-')}</span></div>
+                        <div><span class="text-slate-400 font-bold block">Tuman</span><span class="font-semibold">${escapeHtml(item.district || '-')}</span></div>
+                        <div><span class="text-slate-400 font-bold block">Telegram</span><span class="font-semibold">${escapeHtml(item.telegram || '-')}</span></div>
+                        <div><span class="text-slate-400 font-bold block">Instagram</span><span class="font-semibold">${escapeHtml(item.instagram || '-')}</span></div>
+                        <div class="col-span-2"><span class="text-slate-400 font-bold block">Manzil</span><span class="font-semibold">${escapeHtml(item.address || '-')}</span></div>
+                    </div>
+
                     <div class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 space-y-1">
                         <label class="block font-bold text-amber-800 text-[11px]"><i class="fa-regular fa-clock"></i> Eslatma vaqti:</label>
-                        <input type="datetime-local" value="${item.followUpDate || ''}" onchange="updateFollowUp(${item.id}, this.value)" class="w-full p-2 bg-white border rounded-lg text-xs font-semibold">
+                        <input type="datetime-local" value="${escapeHtml(item.followUpDate || '')}" onchange="updateFollowUp(${item.id}, this.value)" class="w-full p-2 bg-white border rounded-lg text-xs font-semibold">
                     </div>
+
                     <div>
-                        <span class="text-slate-400 font-bold block text-[10px] uppercase mb-1">Izoh</span>
-                        <textarea onchange="updateNotes(${item.id}, this.value)" rows="3" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium">${item.notes || ''}</textarea>
+                        <span class="text-slate-400 font-bold block text-[10px] uppercase mb-1">Muloqot Izohlari</span>
+                        <textarea onchange="updateNotes(${item.id}, this.value)" rows="3" class="w-full p-2.5 bg-slate-50 border rounded-xl font-medium focus:ring-2 focus:ring-emerald-500/20">${escapeHtml(item.notes || '')}</textarea>
                     </div>
-                    <div class="pt-2 border-t flex justify-between items-center">
-                        <button onclick="deleteLead(${item.id})" class="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-bold"><i class="fa-solid fa-trash"></i> O'chirish</button>
-                        <button onclick="closeModal('detail-modal')" class="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-xl font-bold">Yopish</button>
+
+                    <div>
+                        <span class="text-slate-400 font-bold block text-[10px] uppercase mb-1">Faoliyat tarixi</span>
+                        <div class="bg-slate-50 rounded-xl border p-2.5 max-h-32 overflow-y-auto custom-scrollbar">${historyHtml}</div>
+                    </div>
+
+                    <div class="pt-2 border-t flex justify-between">
+                        <button onclick="deleteLead(${item.id})" class="px-4 py-2 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-200"><i class="fa-solid fa-trash"></i> O'chirish</button>
+                        <div class="flex gap-2">
+                            <button onclick="openEditModal(${item.id})" class="px-4 py-2 bg-blue-50 text-blue-600 font-bold rounded-xl border border-blue-200">Tahrirlash</button>
+                            <button onclick="closeModal('detail-modal')" class="px-5 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl">Yopish</button>
+                        </div>
                     </div>
                 </div>
             `;
             document.getElementById('detail-modal').classList.remove('hidden');
         }
 
-        function openAddModal() { document.getElementById('add-modal').classList.remove('hidden'); }
-        function openScriptModal() { document.getElementById('script-modal').classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-        function copyText(elemId) {
-            const text = document.getElementById(elemId).innerText;
-            navigator.clipboard.writeText(text);
-            alert("Nusxalandi!");
+        function openAISettingsModal() {
+            document.getElementById('api-key-input').value = localStorage.getItem(GEMINI_API_KEY_KEY) || '';
+            document.getElementById('model-select').value = localStorage.getItem(GEMINI_MODEL_KEY) || DEFAULT_MODEL;
+            document.getElementById('ai-settings-modal').classList.remove('hidden');
         }
 
+        function saveApiKey() {
+            const key = document.getElementById('api-key-input').value.trim();
+            const model = document.getElementById('model-select').value;
+            if (key) localStorage.setItem(GEMINI_API_KEY_KEY, key);
+            localStorage.setItem(GEMINI_MODEL_KEY, model);
+            showToast('Sozlamalar saqlandi!', 'success');
+            closeModal('ai-settings-modal');
+        }
+
+        function openAddModal() {
+            document.getElementById('add-modal-title').innerText = 'Yangi Lead Qo\'shish';
+            document.getElementById('form-id').value = '';
+            ['name','category','district','address','phone','telegram','instagram','website','notes'].forEach(f => document.getElementById('form-' + f).value = '');
+            document.getElementById('form-status').value = 'Yangi';
+            document.getElementById('form-priority').value = "O'rta";
+            document.getElementById('add-modal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const item = restaurants.find(r => r.id === id);
+            if (!item) return;
+            closeModal('detail-modal');
+            document.getElementById('add-modal-title').innerText = "Leadni Tahrirlash";
+            document.getElementById('form-id').value = item.id;
+            document.getElementById('form-name').value = item.name || '';
+            document.getElementById('form-category').value = item.category || '';
+            document.getElementById('form-district').value = item.district || '';
+            document.getElementById('form-address').value = item.address || '';
+            document.getElementById('form-phone').value = item.phone || '';
+            document.getElementById('form-telegram').value = item.telegram || '';
+            document.getElementById('form-instagram').value = item.instagram || '';
+            document.getElementById('form-website').value = item.website || '';
+            document.getElementById('form-notes').value = item.notes || '';
+            document.getElementById('form-status').value = item.status || 'Yangi';
+            document.getElementById('form-priority').value = item.priority || "O'rta";
+            document.getElementById('add-modal').classList.remove('hidden');
+        }
+
+        function submitLeadForm() {
+            const name = document.getElementById('form-name').value.trim();
+            if (!name) { showToast("Restoran nomini kiriting!", 'warn'); return; }
+
+            const idVal = document.getElementById('form-id').value;
+            const phone = formatPhoneNumber(document.getElementById('form-phone').value.trim());
+            const dup = restaurants.find(r => phone && r.phone === phone && String(r.id) !== idVal);
+
+            const proceed = () => {
+                if (idVal) {
+                    const item = restaurants.find(r => String(r.id) === idVal);
+                    if (item) {
+                        item.name = name;
+                        item.category = document.getElementById('form-category').value.trim() || 'Umumiy';
+                        item.district = document.getElementById('form-district').value.trim() || 'Toshkent';
+                        item.address = document.getElementById('form-address').value.trim() || '-';
+                        item.phone = phone;
+                        item.telegram = document.getElementById('form-telegram').value.trim();
+                        item.instagram = document.getElementById('form-instagram').value.trim();
+                        item.website = document.getElementById('form-website').value.trim();
+                        item.notes = document.getElementById('form-notes').value.trim();
+                        item.status = document.getElementById('form-status').value;
+                        item.priority = document.getElementById('form-priority').value;
+                        logActivity(item, "Ma'lumotlar tahrirlandi");
+                        showToast('Lead yangilandi!', 'success');
+                    }
+                } else {
+                    const newLead = {
+                        id: Date.now(), pinned: false, name,
+                        category: document.getElementById('form-category').value.trim() || 'Umumiy',
+                        district: document.getElementById('form-district').value.trim() || 'Toshkent',
+                        address: document.getElementById('form-address').value.trim() || '-',
+                        phone, telegram: document.getElementById('form-telegram').value.trim(),
+                        instagram: document.getElementById('form-instagram').value.trim(),
+                        website: document.getElementById('form-website').value.trim(),
+                        maps: '', work_hours: "Ko'rsatilmadi",
+                        status: document.getElementById('form-status').value,
+                        priority: document.getElementById('form-priority').value,
+                        notes: document.getElementById('form-notes').value.trim(),
+                        followUpDate: '', createdAt: new Date().toISOString(),
+                        history: [{ text: "Qo'lda qo'shildi", date: new Date().toISOString() }]
+                    };
+                    restaurants.unshift(newLead);
+                    showToast('Yangi lead qo\'shildi!', 'success');
+                }
+                saveToLocalStorage();
+                populateFilterDropdowns();
+                applyFilters();
+                closeModal('add-modal');
+            };
+
+            if (dup) {
+                confirmAction(`Bu telefon raqami "${dup.name}" nomli leadda allaqachon mavjud. Baribir saqlanaversinmi?`, proceed);
+            } else {
+                proceed();
+            }
+        }
+
+        function openAddModal_legacy() { /* kept for backward compatibility, replaced by openAddModal above */ }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function saveQuickLead() {
+            const name = document.getElementById('quick-name').value.trim();
+            const phone = formatPhoneNumber(document.getElementById('quick-phone').value.trim());
+
+            if (!name) { showToast("Restoran nomini kiriting!", 'warn'); return; }
+
+            const dup = restaurants.find(r => phone && r.phone === phone);
+            const doSave = () => {
+                const newLead = {
+                    id: Date.now(), pinned: false, name: name, district: 'Toshkent', category: 'Umumiy',
+                    phone: phone, telegram: '', address: '-', status: 'Yangi', priority: "O'rta",
+                    notes: "Tezkor paneldan qo'shildi", followUpDate: '', createdAt: new Date().toISOString(),
+                    history: [{ text: "Tezkor panel orqali qo'shildi", date: new Date().toISOString() }]
+                };
+                restaurants.unshift(newLead);
+                saveToLocalStorage();
+                populateFilterDropdowns();
+                applyFilters();
+                document.getElementById('quick-name').value = '';
+                document.getElementById('quick-phone').value = '';
+                showToast('Lead qo\'shildi!', 'success');
+            };
+
+            if (dup) {
+                confirmAction(`Bu raqam "${dup.name}" leadida bor. Baribir qo'shilsinmi?`, doSave);
+            } else { doSave(); }
+        }
+
+        // ---------- Backup / Export ----------
         function exportJSONBackup() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(restaurants));
             const downloadAnchor = document.createElement('a');
@@ -758,6 +1215,7 @@
             downloadAnchor.setAttribute("download", `Manady_CRM_Backup_${new Date().toISOString().slice(0,10)}.json`);
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click(); downloadAnchor.remove();
+            showToast('Backup yuklab olindi', 'success');
         }
 
         function importJSONBackup(event) {
@@ -766,21 +1224,45 @@
                 try {
                     const importedData = JSON.parse(e.target.result);
                     if (Array.isArray(importedData)) {
-                        restaurants = importedData; saveToLocalStorage(); renderApp(); alert("Baza tiklandi!");
-                    }
-                } catch(err) { alert("Xato fayl!"); }
+                        confirmAction(`Joriy baza (${restaurants.length} ta) o'rniga ${importedData.length} ta yozuv tiklansinmi?`, () => {
+                            restaurants = importedData;
+                            restaurants.forEach(r => { if (!r.priority) r.priority = "O'rta"; if (!r.history) r.history = []; });
+                            saveToLocalStorage(); renderApp();
+                            showToast('Baza tiklandi!', 'success');
+                        });
+                    } else { showToast('Fayl formati noto\'g\'ri', 'error'); }
+                } catch(err) { showToast('Xato fayl!', 'error'); }
             };
             if (event.target.files[0]) fileReader.readAsText(event.target.files[0]);
+            event.target.value = '';
         }
 
         function exportToExcel() {
             const dataToExport = restaurants.map((r, idx) => ({
-                "№": idx + 1, "Restoran nomi": r.name, "Status": r.status, "Teg": r.tag, "Tuman": r.district, "Telefon": r.phone, "Eslatma": r.followUpDate || '', "Izoh": r.notes
+                "№": idx + 1, "Restoran nomi": r.name, "Status": r.status, "Muhimlik": r.priority,
+                "Tuman": r.district, "Manzil": r.address, "Telefon": r.phone, "Telegram": r.telegram,
+                "Instagram": r.instagram, "Eslatma": r.followUpDate || '', "Izoh": r.notes
             }));
             const worksheet = XLSX.utils.json_to_sheet(dataToExport);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Restoranlar");
             XLSX.writeFile(workbook, `Manady_CRM_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('Excel fayl yuklab olindi', 'success');
+        }
+
+        function exportToCSV() {
+            const dataToExport = restaurants.map((r, idx) => ({
+                "#": idx + 1, "Nomi": r.name, "Status": r.status, "Muhimlik": r.priority,
+                "Tuman": r.district, "Manzil": r.address, "Telefon": r.phone, "Izoh": r.notes
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const csv = XLSX.utils.sheet_to_csv(worksheet);
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Manady_CRM_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            showToast('CSV fayl yuklab olindi', 'success');
         }
     </script>
 </body>
